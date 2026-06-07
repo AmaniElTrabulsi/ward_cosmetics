@@ -7,77 +7,89 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
-  const menu = [
-    { name: "Home", path: "/" },
-    { name: "Search", path: "/search" },
-    { name: "Register", path: "/register" },
-    { name: "Add Product", path: "/admin/add-product" },
-  ];
+  const go = (path: string) => {
+    router.push(path);
+    setOpen(false);
+  };
 
   return (
     <>
-      {/* BURGER BUTTON */}
-      <button style={styles.burger} onClick={() => setOpen(true)}>
-        ☰
-      </button>
+      {/* TOP BAR */}
+      <div style={styles.top}>
+        <button onClick={() => setOpen(true)} style={styles.burger}>
+          ☰
+        </button>
+        <div style={styles.logo}>Ward POS</div>
+      </div>
 
       {/* OVERLAY */}
       {open && (
-        <div style={styles.overlay} onClick={() => setOpen(false)}>
-          <div style={styles.sidebar} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginBottom: 20 }}>Menu</h3>
-
-            {menu.map((item) => (
-              <div
-                key={item.path}
-                style={styles.item}
-                onClick={() => {
-                  router.push(item.path);
-                  setOpen(false);
-                }}
-              >
-                {item.name}
-              </div>
-            ))}
-          </div>
-        </div>
+        <div style={styles.overlay} onClick={() => setOpen(false)} />
       )}
+
+      {/* DRAWER */}
+      <div
+        style={{
+          ...styles.drawer,
+          transform: open ? "translateX(0)" : "translateX(-100%)",
+        }}
+      >
+        <button onClick={() => go("/")}>Home</button>
+        <button onClick={() => go("/search")}>Search</button>
+        <button onClick={() => go("/register")}>Register</button>
+        <button onClick={() => go("/admin/add-product")}>
+          Add Product
+        </button>
+      </div>
     </>
   );
 }
 
 const styles: any = {
-  burger: {
+  top: {
     position: "fixed",
-    top: 15,
-    left: 15,
-    fontSize: 26,
-    background: "transparent",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 50,
+    background: "#0b0f19",
+    display: "flex",
+    alignItems: "center",
+    padding: "0 10px",
+    zIndex: 1000,
+  },
+
+  burger: {
+    fontSize: 22,
+    background: "none",
     border: "none",
     color: "white",
-    zIndex: 1000,
+  },
+
+  logo: {
+    marginLeft: 10,
+    fontWeight: "bold",
   },
 
   overlay: {
     position: "fixed",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    backgroundColor: "rgba(0,0,0,0.6)",
+    inset: 0,
+    background: "rgba(0,0,0,0.5)",
     zIndex: 999,
   },
 
-  sidebar: {
-    width: 250,
+  drawer: {
+    position: "fixed",
+    top: 50,
+    left: 0,
+    width: 220,
     height: "100%",
-    backgroundColor: "#111",
-    padding: 20,
-  },
-
-  item: {
+    background: "#111827",
     padding: 10,
-    cursor: "pointer",
-    borderBottom: "1px solid #333",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    zIndex: 1001,
+    transition: "0.3s",
   },
 };
