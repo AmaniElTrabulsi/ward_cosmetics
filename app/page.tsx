@@ -6,47 +6,18 @@ export default function Home() {
   const router = useRouter();
 
   const cards = [
-    {
-      title: "Search Item",
-      subtitle: "Find products quickly",
-      emoji: "🔍",
-      route: "/search",
-    },
-    {
-      title: "Scan Item",
-      subtitle: "Use camera barcode scanner",
-      emoji: "📷",
-      route: "/scan",
-    },
-    {
-      title: "Add Product",
-      subtitle: "Create new item in stock",
-      emoji: "➕",
-      route: "/admin/add-product",
-    },
-    {
-      title: "Register (Kasse)",
-      subtitle: "Checkout & sales",
-      emoji: "🧾",
-      route: "/register",
-    },
-    {
-      title: "Dashboard",
-      subtitle: "Stock & analytics",
-      emoji: "📊",
-      route: "/dashboard",
-    },
+    { title: "Search Products", icon: "🔍", route: "/search" },
+    { title: "Scan Barcode", icon: "📷", route: "/scan" },
+    { title: "Register POS", icon: "🧾", route: "/register" },
+    { title: "Add Product", icon: "➕", route: "/admin/add-product" },
+    { title: "Dashboard", icon: "📊", route: "/dashboard" },
   ];
 
   return (
     <div style={styles.page}>
-      {/* HEADER */}
-      <div style={styles.header}>
-        <h1 style={styles.title}>Ward Cosmetics</h1>
-        <p style={styles.subtitle}>Internal POS System</p>
-      </div>
+      <h1 style={styles.title}>Ward Cosmetics POS</h1>
+      <p style={styles.subtitle}>Inventory & Sales System</p>
 
-      {/* GRID */}
       <div style={styles.grid}>
         {cards.map((c) => (
           <div
@@ -54,71 +25,51 @@ export default function Home() {
             style={styles.card}
             onClick={() => router.push(c.route)}
           >
-            <div style={styles.icon}>{c.emoji}</div>
-            <h3 style={styles.cardTitle}>{c.title}</h3>
-            <p style={styles.cardSubtitle}>{c.subtitle}</p>
+            <div style={styles.icon}>{c.icon}</div>
+            <div style={styles.cardTitle}>{c.title}</div>
           </div>
         ))}
       </div>
     </div>
-    
   );
 }
 
-/* ================= STYLES ================= */
-
 const styles: any = {
   page: {
-    minHeight: "100vh",
-    backgroundColor: "#0f0f10",
-    color: "white",
-    padding: 20,
-    fontFamily: "Arial",
-  },
-
-  header: {
-    marginBottom: 20,
+    paddingTop: 60,
   },
 
   title: {
-    fontSize: 26,
-    margin: 0,
+    fontSize: 28,
+    fontWeight: "bold",
   },
 
   subtitle: {
-    fontSize: 14,
-    color: "#888",
-    marginTop: 5,
+    color: "#94a3b8",
+    marginBottom: 30,
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
     gap: 15,
   },
 
   card: {
-    backgroundColor: "#1a1a1a",
-    border: "1px solid #2a2a2a",
-    borderRadius: 16,
-    padding: 18,
+    background: "#111827",
+    padding: 20,
+    borderRadius: 12,
     cursor: "pointer",
+    border: "1px solid #1f2937",
     transition: "0.2s",
-    textAlign: "center",
   },
 
   icon: {
-    fontSize: 34,
+    fontSize: 30,
     marginBottom: 10,
   },
 
   cardTitle: {
-    fontSize: 15,
-    margin: "5px 0",
-  },
-
-  cardSubtitle: {
-    fontSize: 12,
-    color: "#aaa",
+    fontSize: 14,
   },
 };

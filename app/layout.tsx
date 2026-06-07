@@ -1,21 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: "Ward Cosmetics POS",
-  description: "Inventory & POS system",
+  description: "Inventory & POS System",
 };
 
 export default function RootLayout({
@@ -24,32 +13,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body
-        style={{
-          margin: 0,
-          minHeight: "100vh",
-          backgroundColor: "#0f0f10",
-          color: "white",
-        }}
-      >
-        {/* GLOBAL BURGER SIDEBAR */}
+    <html lang="en">
+      <body style={styles.body}>
         <Sidebar />
 
-        {/* PAGE CONTENT */}
-        <main
-          style={{
-            minHeight: "100vh",
-            padding: 20,
-            boxSizing: "border-box",
-          }}
-        >
-          {children}
-        </main>
+        <main style={styles.main}>{children}</main>
       </body>
     </html>
   );
 }
+
+const styles: any = {
+  body: {
+    margin: 0,
+    fontFamily: "Inter, Arial, sans-serif",
+    background: "#0b1220",
+    color: "#e5e7eb",
+  },
+
+  main: {
+    marginLeft: 70,
+    padding: 24,
+    minHeight: "100vh",
+  },
+};
