@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 
 export default function RegisterPage() {
   const [barcode, setBarcode] = useState("");
@@ -10,11 +10,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
-  const scannerRef = useRef<any>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   /* ================= FIND PRODUCT ================= */
-  async function findProduct(code: string) {
-    const value = code.trim();
+  async function findProduct(code?: string) {
+    const value = code || barcode;
     if (!value) return;
 
     setLoading(true);
@@ -23,7 +23,7 @@ export default function RegisterPage() {
       .from("products")
       .select("*")
       .eq("barcode", value)
-      .maybeSingle();
+      .single();
 
     if (error || !data) {
       alert("Product not found");
@@ -47,84 +47,85 @@ export default function RegisterPage() {
     setLoading(false);
   }
 
-  /* ================= START CAMERA SCANNER ================= */
-  function startScanner() {
+  /* ================= OPEN CAMERA SCANNER ================= */
+  async function startScanner() {
     setScannerOpen(true);
 
-    setTimeout(() => {
-      if (scannerRef.current) return;
+    setTimeout(async () => {
+      try {
+        const html5QrCode = new Html5Qrcode("reader");
+        scannerRef.current = html5QrCode;
 
-      const scanner = new Html5QrcodeScanner(
-        "reader",
-        {
-          fps: 10,
-          qrbox: 250,
-          rememberLastUsedCamera: true,
-          facingMode: "environment", // BACK CAMERA FIX
-        },
-        false
-      );
-
-      scanner.render(
-        (decodedText) => {
-          scanner.clear();
-          setScannerOpen(false);
-          findProduct(decodedText);
-        },
-        (error) => {
-          // ignore scan errors
-        }
-      );
-
-      scannerRef.current = scanner;
+        await html5QrCode.start(
+          { facingMode: "environment" }, // ✅ BACK CAMERA FIX
+          {
+            fps: 10,
+            qrbox: 250,
+          },
+          async (decodedText) => {
+            await html5QrCode.stop();
+            setScannerOpen(false);
+            findProduct(decodedText);
+          },
+          () => {}
+        );
+      } catch (err) {
+        console.log("Camera error:", err);
+        alert("Cannot access camera");
+        setScannerOpen(false);
+      }
     }, 300);
   }
 
-  function stopScanner() {
+  /* ================= STOP SCANNER ================= */
+  async function stopScanner() {
     if (scannerRef.current) {
-      scannerRef.current.clear();
+      await scannerRef.current.stop().catch(() => {});
       scannerRef.current = null;
     }
     setScannerOpen(false);
   }
 
   /* ================= CART ================= */
+  function removeItem(id: string) {
+    setCart(cart.filter((i) => i.id !== id));
+  }
+
   function updateQty(id: string, qty: number) {
-    setCart((prev) =>
-      prev.map((i) =>
+    setCart(
+      cart.map((i) =>
         i.id === id ? { ...i, qty: Math.max(1, qty) } : i
       )
     );
   }
 
-  function removeItem(id: string) {
-    setCart((prev) => prev.filter((i) => i.id !== id));
-  }
-
   const total = cart.reduce(
-    (sum, i) => sum + i.price * i.qty,
+    (sum, item) => sum + item.price * item.qty,
     0
   );
 
   /* ================= CHECKOUT ================= */
   async function checkout() {
-    if (!cart.length) return;
+    if (cart.length === 0) return;
 
     setLoading(true);
 
     try {
       for (const item of cart) {
+        const newStock =
+          (item.stock_quantity || 0) - item.qty;
+
         await supabase
           .from("products")
-          .update({
-            stock_quantity:
-              (item.stock_quantity || 0) - item.qty,
-          })
+          .update({ stock_quantity: newStock })
           .eq("id", item.id);
       }
 
       setCart([]);
       alert("Checkout successful!");
+    } catch (err) {
+      console.log(err);
+      alert("Checkout failed");
     } finally {
       setLoading(false);
     }
@@ -134,36 +135,36 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <h1 style={styles.title}>🧾 Register (POS)</h1>
 
-      {/* SCANNER CONTROLS */}
+      {/* INPUT + ACTIONS */}
       <div style={styles.scanBox}>
         <input
           style={styles.input}
-          placeholder="Enter barcode manually"
+          placeholder="Scan or enter barcode"
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
         />
 
         <button
-          style={styles.scanBtn}
-          onClick={() => findProduct(barcode)}
+          style={styles.addBtn}
+          onClick={() => findProduct()}
         >
           Add
         </button>
 
-        {/* REAL CAMERA SCAN BUTTON */}
         <button
-          style={styles.cameraBtn}
+          style={styles.scanBtn}
           onClick={startScanner}
         >
           📷 Scan
         </button>
       </div>
 
-      {/* CAMERA VIEW */}
+      {/* CAMERA SCANNER */}
       {scannerOpen && (
         <div style={styles.scannerBox}>
-          <div id="reader" />
-          <button onClick={stopScanner} style={styles.stopBtn}>
+          <div id="reader" style={{ width: "100%" }} />
+
+          <button style={styles.stopBtn} onClick={stopScanner}>
             Stop Scanner
           </button>
         </div>
@@ -173,14 +174,20 @@ export default function RegisterPage() {
       <div style={styles.cart}>
         <h3>Cart</h3>
 
+        {cart.length === 0 && (
+          <p style={{ color: "#888" }}>No items yet</p>
+        )}
+
         {cart.map((item) => (
           <div key={item.id} style={styles.cartItem}>
             <div>
               <b>{item.name}</b>
-              <p>${item.price}</p>
+              <p style={{ fontSize: 12, color: "#888" }}>
+                ${item.price}
+              </p>
             </div>
 
-            <div>
+            <div style={styles.qtyBox}>
               <button onClick={() => updateQty(item.id, item.qty - 1)}>
                 -
               </button>
@@ -192,7 +199,10 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            <button onClick={() => removeItem(item.id)}>
+            <button
+              style={styles.removeBtn}
+              onClick={() => removeItem(item.id)}
+            >
               ❌
             </button>
           </div>
@@ -200,11 +210,15 @@ export default function RegisterPage() {
       </div>
 
       {/* TOTAL */}
-      <div style={styles.total}>
+      <div style={styles.totalBox}>
         <h2>Total: ${total.toFixed(2)}</h2>
 
-        <button onClick={checkout} style={styles.checkout}>
-          Checkout
+        <button
+          style={styles.checkoutBtn}
+          onClick={checkout}
+          disabled={loading}
+        >
+          💳 Checkout
         </button>
       </div>
     </div>
@@ -216,63 +230,66 @@ export default function RegisterPage() {
 const styles: any = {
   page: {
     padding: 20,
-    background: "#0f0f10",
     minHeight: "100vh",
+    backgroundColor: "#0f0f10",
     color: "white",
   },
 
-  title: { marginBottom: 20 },
+  title: {
+    marginBottom: 20,
+  },
 
   scanBox: {
     display: "flex",
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginBottom: 15,
   },
 
   input: {
     flex: 1,
     padding: 12,
     borderRadius: 10,
-    background: "#1a1a1a",
-    color: "white",
     border: "1px solid #333",
+    backgroundColor: "#1a1a1a",
+    color: "white",
+  },
+
+  addBtn: {
+    padding: "12px 14px",
+    backgroundColor: "#3b82f6",
+    border: "none",
+    borderRadius: 10,
+    color: "white",
   },
 
   scanBtn: {
-    padding: 12,
-    background: "#3b82f6",
-    color: "white",
-    borderRadius: 10,
+    padding: "12px 14px",
+    backgroundColor: "#10b981",
     border: "none",
-  },
-
-  cameraBtn: {
-    padding: 12,
-    background: "#10b981",
+    borderRadius: 10,
     color: "black",
-    borderRadius: 10,
-    border: "none",
     fontWeight: "bold",
   },
 
   scannerBox: {
     marginBottom: 20,
-    background: "#111",
     padding: 10,
+    backgroundColor: "#111",
     borderRadius: 10,
   },
 
   stopBtn: {
     marginTop: 10,
+    width: "100%",
     padding: 10,
-    background: "red",
+    backgroundColor: "#ef4444",
     color: "white",
     border: "none",
     borderRadius: 8,
   },
 
   cart: {
-    background: "#1a1a1a",
+    backgroundColor: "#1a1a1a",
     padding: 15,
     borderRadius: 12,
   },
@@ -284,16 +301,29 @@ const styles: any = {
     borderBottom: "1px solid #333",
   },
 
-  total: {
+  qtyBox: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+  },
+
+  removeBtn: {
+    background: "transparent",
+    border: "none",
+    color: "red",
+  },
+
+  totalBox: {
     marginTop: 20,
     textAlign: "center",
   },
 
-  checkout: {
+  checkoutBtn: {
     width: "100%",
     padding: 15,
-    background: "#4ade80",
+    backgroundColor: "#4ade80",
     border: "none",
     borderRadius: 10,
+    fontWeight: "bold",
   },
 };
