@@ -11,7 +11,7 @@ export default function RegisterPage() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerId = "reader";
 
-  /* ================= ADD PRODUCT ================= */
+  /* ================= ADD ITEM ================= */
   async function addByBarcode(code: string) {
     const { data } = await supabase
       .from("products")
@@ -37,47 +37,59 @@ export default function RegisterPage() {
     });
   }
 
-  /* ================= START SCANNER (FIXED VERSION) ================= */
+  /* ================= START SCANNER (SAFE) ================= */
   async function startScanner() {
-    try {
-      setScannerOpen(true);
-
-      const html5QrCode = new Html5Qrcode(readerId);
-      scannerRef.current = html5QrCode;
-
-      const devices = await Html5Qrcode.getCameras();
-
-      if (!devices || devices.length === 0) {
-        alert("No camera found");
-        return;
-      }
-
-      // pick BACK camera (best effort)
-      const backCamera =
-        devices.find((d) =>
-          d.label.toLowerCase().includes("back")
-        ) || devices[0];
-
-      await html5QrCode.start(
-        backCamera.id,
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-        },
-        async (decodedText) => {
-          await stopScanner();
-          addByBarcode(decodedText);
-        },
-        () => {}
-      );
-    } catch (err) {
-      console.log("Scanner error:", err);
-      alert("Camera failed to open. Try refresh or HTTPS.");
-      setScannerOpen(false);
-    }
+    setScannerOpen(true);
   }
 
-  /* ================= STOP SCANNER ================= */
+  /* ================= EFFECT: START CAMERA ONLY AFTER RENDER ================= */
+  useEffect(() => {
+    if (!scannerOpen) return;
+
+    let html5QrCode: Html5Qrcode;
+
+    const init = async () => {
+      try {
+        html5QrCode = new Html5Qrcode(readerId);
+        scannerRef.current = html5QrCode;
+
+        const cameras = await Html5Qrcode.getCameras();
+
+        if (!cameras || cameras.length === 0) {
+          alert("No camera found");
+          return;
+        }
+
+        const backCamera =
+          cameras.find((c) =>
+            c.label.toLowerCase().includes("back")
+          ) || cameras[0];
+
+        await html5QrCode.start(
+          backCamera.id,
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          async (text) => {
+            await stopScanner();
+            addByBarcode(text);
+          }
+        );
+      } catch (err) {
+        console.log("CAMERA ERROR:", err);
+        alert("Camera failed to open (check permissions)");
+        setScannerOpen(false);
+      }
+    };
+
+    // 🔥 IMPORTANT: wait for DOM render
+    const timeout = setTimeout(init, 300);
+
+    return () => clearTimeout(timeout);
+  }, [scannerOpen]);
+
+  /* ================= STOP ================= */
   async function stopScanner() {
     try {
       if (scannerRef.current) {
