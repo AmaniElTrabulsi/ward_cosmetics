@@ -7,13 +7,14 @@ export default function RegisterPage() {
   const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   /* ================= FIND PRODUCT ================= */
   async function findProduct(code?: string) {
     const value = code || barcode;
-    if (!value) return;
+    if (!value || loading) return;
 
     setLoading(true);
 
@@ -47,19 +48,24 @@ export default function RegisterPage() {
     inputRef.current?.focus();
   }
 
-  /* ================= SCAN (CAMERA INPUT TRIGGER) ================= */
+  /* ================= SCAN MODE (UX FIX) ================= */
   function triggerScan() {
+    setScanning(true);
     inputRef.current?.focus();
+
+    setTimeout(() => {
+      setScanning(false);
+    }, 4000);
   }
 
-  /* ================= CART FUNCTIONS ================= */
+  /* ================= CART ================= */
   function removeItem(id: string) {
-    setCart(cart.filter((i) => i.id !== id));
+    setCart((prev) => prev.filter((i) => i.id !== id));
   }
 
   function updateQty(id: string, qty: number) {
-    setCart(
-      cart.map((i) =>
+    setCart((prev) =>
+      prev.map((i) =>
         i.id === id ? { ...i, qty: Math.max(1, qty) } : i
       )
     );
@@ -72,7 +78,7 @@ export default function RegisterPage() {
 
   /* ================= CHECKOUT ================= */
   async function checkout() {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || loading) return;
 
     setLoading(true);
 
@@ -101,18 +107,23 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <h1 style={styles.title}>🧾 Register (POS)</h1>
 
+      {scanning && (
+        <div style={styles.scanHint}>
+          📷 Scan mode active... focus barcode
+        </div>
+      )}
+
       {/* SCANNER INPUT */}
       <div style={styles.scanBox}>
         <input
           ref={inputRef}
           style={styles.input}
-          placeholder="Scan barcode (camera or keyboard)"
+          placeholder="Scan barcode (camera / scanner / keyboard)"
           value={barcode}
           onChange={(e) => {
             const value = e.target.value;
             setBarcode(value);
 
-            // AUTO-SCAN when barcode is complete
             if (value.length >= 6) {
               findProduct(value);
             }
@@ -122,6 +133,7 @@ export default function RegisterPage() {
         <button
           style={styles.scanBtn}
           onClick={() => findProduct()}
+          disabled={loading}
         >
           Add
         </button>
@@ -180,6 +192,7 @@ export default function RegisterPage() {
         <button
           style={styles.checkoutBtn}
           onClick={checkout}
+          disabled={loading}
         >
           💳 Checkout
         </button>
@@ -200,6 +213,15 @@ const styles: any = {
 
   title: {
     marginBottom: 20,
+  },
+
+  scanHint: {
+    marginBottom: 10,
+    padding: 10,
+    backgroundColor: "#1f2937",
+    borderRadius: 8,
+    fontSize: 12,
+    color: "#93c5fd",
   },
 
   scanBox: {

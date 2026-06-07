@@ -20,9 +20,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html
       lang="en"
@@ -36,15 +36,19 @@ export default function RootLayout({
           color: "white",
         }}
       >
-        <div style={{ display: "flex", minHeight: "100vh" }}>
-          {/* SIDEBAR (GLOBAL NAVIGATION) */}
-          <Sidebar />
+        {/* GLOBAL BURGER SIDEBAR */}
+        <Sidebar />
 
-          {/* PAGE CONTENT */}
-          <main style={{ flex: 1, padding: 20 }}>
-            {children}
-          </main>
-        </div>
+        {/* PAGE CONTENT */}
+        <main
+          style={{
+            minHeight: "100vh",
+            padding: 20,
+            boxSizing: "border-box",
+          }}
+        >
+          {children}
+        </main>
       </body>
     </html>
   );
