@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function RegisterPage() {
@@ -8,16 +8,19 @@ export default function RegisterPage() {
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  /* ================= SCAN / SEARCH PRODUCT ================= */
-  async function findProduct() {
-    if (!barcode) return;
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  /* ================= FIND PRODUCT ================= */
+  async function findProduct(code?: string) {
+    const value = code || barcode;
+    if (!value) return;
 
     setLoading(true);
 
     const { data, error } = await supabase
       .from("products")
       .select("*")
-      .eq("barcode", barcode)
+      .eq("barcode", value)
       .single();
 
     if (error || !data) {
@@ -26,31 +29,34 @@ export default function RegisterPage() {
       return;
     }
 
-    // check if already in cart
-    const existing = cart.find((i) => i.id === data.id);
+    setCart((prev) => {
+      const existing = prev.find((i) => i.id === data.id);
 
-    if (existing) {
-      setCart(
-        cart.map((i) =>
-          i.id === data.id
-            ? { ...i, qty: i.qty + 1 }
-            : i
-        )
-      );
-    } else {
-      setCart([...cart, { ...data, qty: 1 }]);
-    }
+      if (existing) {
+        return prev.map((i) =>
+          i.id === data.id ? { ...i, qty: i.qty + 1 } : i
+        );
+      }
+
+      return [...prev, { ...data, qty: 1 }];
+    });
 
     setBarcode("");
     setLoading(false);
+
+    inputRef.current?.focus();
   }
 
-  /* ================= REMOVE ITEM ================= */
+  /* ================= SCAN (CAMERA INPUT TRIGGER) ================= */
+  function triggerScan() {
+    inputRef.current?.focus();
+  }
+
+  /* ================= CART FUNCTIONS ================= */
   function removeItem(id: string) {
     setCart(cart.filter((i) => i.id !== id));
   }
 
-  /* ================= UPDATE QTY ================= */
   function updateQty(id: string, qty: number) {
     setCart(
       cart.map((i) =>
@@ -59,7 +65,6 @@ export default function RegisterPage() {
     );
   }
 
-  /* ================= TOTAL ================= */
   const total = cart.reduce(
     (sum, item) => sum + item.price * item.qty,
     0
@@ -73,7 +78,6 @@ export default function RegisterPage() {
 
     try {
       for (const item of cart) {
-        // reduce stock
         const newStock =
           (item.stock_quantity || 0) - item.qty;
 
@@ -83,9 +87,8 @@ export default function RegisterPage() {
           .eq("id", item.id);
       }
 
-      alert("Checkout successful!");
-
       setCart([]);
+      alert("Checkout successful!");
     } catch (err) {
       console.log(err);
       alert("Checkout failed");
@@ -98,21 +101,36 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <h1 style={styles.title}>🧾 Register (POS)</h1>
 
-      {/* SCAN INPUT */}
+      {/* SCANNER INPUT */}
       <div style={styles.scanBox}>
         <input
+          ref={inputRef}
           style={styles.input}
-          placeholder="Scan / Enter barcode"
+          placeholder="Scan barcode (camera or keyboard)"
           value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setBarcode(value);
+
+            // AUTO-SCAN when barcode is complete
+            if (value.length >= 6) {
+              findProduct(value);
+            }
+          }}
         />
 
         <button
           style={styles.scanBtn}
-          onClick={findProduct}
-          disabled={loading}
+          onClick={() => findProduct()}
         >
-          {loading ? "Searching..." : "Add"}
+          Add
+        </button>
+
+        <button
+          style={styles.cameraBtn}
+          onClick={triggerScan}
+        >
+          📷 Scan
         </button>
       </div>
 
@@ -134,21 +152,13 @@ export default function RegisterPage() {
             </div>
 
             <div style={styles.qtyBox}>
-              <button
-                onClick={() =>
-                  updateQty(item.id, item.qty - 1)
-                }
-              >
+              <button onClick={() => updateQty(item.id, item.qty - 1)}>
                 -
               </button>
 
               <span>{item.qty}</span>
 
-              <button
-                onClick={() =>
-                  updateQty(item.id, item.qty + 1)
-                }
-              >
+              <button onClick={() => updateQty(item.id, item.qty + 1)}>
                 +
               </button>
             </div>
@@ -170,7 +180,6 @@ export default function RegisterPage() {
         <button
           style={styles.checkoutBtn}
           onClick={checkout}
-          disabled={loading}
         >
           💳 Checkout
         </button>
@@ -187,7 +196,6 @@ const styles: any = {
     backgroundColor: "#0f0f10",
     minHeight: "100vh",
     color: "white",
-    fontFamily: "Arial",
   },
 
   title: {
@@ -196,7 +204,7 @@ const styles: any = {
 
   scanBox: {
     display: "flex",
-    gap: 10,
+    gap: 8,
     marginBottom: 20,
   },
 
@@ -210,25 +218,31 @@ const styles: any = {
   },
 
   scanBtn: {
-    padding: "12px 16px",
+    padding: "12px 14px",
     backgroundColor: "#3b82f6",
     border: "none",
     borderRadius: 10,
     color: "white",
-    cursor: "pointer",
+  },
+
+  cameraBtn: {
+    padding: "12px 14px",
+    backgroundColor: "#10b981",
+    border: "none",
+    borderRadius: 10,
+    color: "black",
+    fontWeight: "bold",
   },
 
   cart: {
     backgroundColor: "#1a1a1a",
     padding: 15,
     borderRadius: 12,
-    marginBottom: 20,
   },
 
   cartItem: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
     padding: 10,
     borderBottom: "1px solid #333",
   },
@@ -243,21 +257,19 @@ const styles: any = {
     background: "transparent",
     border: "none",
     color: "red",
-    cursor: "pointer",
   },
 
   totalBox: {
+    marginTop: 20,
     textAlign: "center",
   },
 
   checkoutBtn: {
-    marginTop: 10,
-    padding: 15,
     width: "100%",
+    padding: 15,
     backgroundColor: "#4ade80",
     border: "none",
     borderRadius: 10,
     fontWeight: "bold",
-    cursor: "pointer",
   },
 };

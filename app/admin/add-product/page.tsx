@@ -23,17 +23,26 @@ export default function AddProduct() {
 
   const [loading, setLoading] = useState(false);
 
-  /* ================= SEARCH EXISTING PRODUCT ================= */
+  /* ================= FIND EXISTING PRODUCT ================= */
   async function findProduct() {
     if (!search) return;
 
-    const { data } = await supabase
+    setLoading(true);
+
+    const { data, error } = await supabase
       .from("products")
       .select("*")
       .or(`name.ilike.%${search}%,barcode.ilike.%${search}%`)
-      .single();
+      .maybeSingle();
 
-    setExistingProduct(data || null);
+    if (error) {
+      console.log(error);
+      setExistingProduct(null);
+    } else {
+      setExistingProduct(data);
+    }
+
+    setLoading(false);
   }
 
   /* ================= SAVE ================= */
@@ -43,7 +52,7 @@ export default function AddProduct() {
 
       let imageUrl = "";
 
-      // upload image
+      /* ================= IMAGE UPLOAD ================= */
       if (file) {
         const fileName = `${Date.now()}-${file.name}`;
 
@@ -52,6 +61,7 @@ export default function AddProduct() {
           .upload(`products/${fileName}`, file);
 
         if (error) {
+          console.log(error);
           alert("Image upload failed");
           setLoading(false);
           return;
@@ -84,7 +94,8 @@ export default function AddProduct() {
           .from("products")
           .update({
             stock_quantity:
-              (existingProduct.stock_quantity || 0) + Number(stock || 0),
+              (existingProduct.stock_quantity || 0) +
+              Number(stock || 0),
           })
           .eq("id", existingProduct.id);
 
@@ -107,7 +118,7 @@ export default function AddProduct() {
       <div style={styles.card}>
         <h1 style={styles.title}>➕ Add / Update Product</h1>
 
-        {/* MODE SELECT */}
+        {/* MODE SWITCH */}
         <div style={styles.switchRow}>
           <button
             style={mode === "new" ? styles.activeBtn : styles.btn}
@@ -120,26 +131,51 @@ export default function AddProduct() {
             style={mode === "update" ? styles.activeBtn : styles.btn}
             onClick={() => setMode("update")}
           >
-            Update Stock
+            Add Stock
           </button>
         </div>
 
         {/* ================= NEW PRODUCT ================= */}
         {mode === "new" && (
           <div style={styles.form}>
-            <input placeholder="Name" onChange={(e) => setName(e.target.value)} />
-            <input placeholder="Brand" onChange={(e) => setBrand(e.target.value)} />
-            <input placeholder="Price" onChange={(e) => setPrice(e.target.value)} />
-            <input placeholder="Stock" onChange={(e) => setStock(e.target.value)} />
-            <input placeholder="Barcode" onChange={(e) => setBarcode(e.target.value)} />
+            <input
+              placeholder="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+
+            <input
+              placeholder="Brand"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+            />
+
+            <input
+              placeholder="Price"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+
+            <input
+              placeholder="Stock"
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+            />
+
+            <input
+              placeholder="Barcode"
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+            />
           </div>
         )}
 
-        {/* ================= UPDATE PRODUCT ================= */}
+        {/* ================= UPDATE STOCK ================= */}
         {mode === "update" && (
           <div style={styles.form}>
             <input
               placeholder="Search product (name or barcode)"
+              value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
 
@@ -149,30 +185,30 @@ export default function AddProduct() {
 
             {existingProduct && (
               <div style={styles.foundBox}>
-                <p>{existingProduct.name}</p>
-                <p>Stock: {existingProduct.stock_quantity}</p>
+                <p><b>{existingProduct.name}</b></p>
+                <p>Current Stock: {existingProduct.stock_quantity}</p>
               </div>
             )}
 
             <input
               placeholder="Add stock amount"
+              value={stock}
               onChange={(e) => setStock(e.target.value)}
             />
           </div>
         )}
 
         {/* ================= IMAGE ================= */}
-        <label style={styles.label}>📷 Photo (camera or gallery)</label>
+        <label style={styles.label}>📷 Image (gallery or camera)</label>
 
         <input
           type="file"
           accept="image/*"
-          capture="environment"
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              setFile(file);
-              setPreview(URL.createObjectURL(file));
+            const f = e.target.files?.[0];
+            if (f) {
+              setFile(f);
+              setPreview(URL.createObjectURL(f));
             }
           }}
         />
@@ -181,8 +217,12 @@ export default function AddProduct() {
           <img src={preview} style={styles.preview} />
         )}
 
-        {/* SAVE */}
-        <button onClick={handleSave} disabled={loading} style={styles.saveBtn}>
+        {/* SAVE BUTTON */}
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          style={styles.saveBtn}
+        >
           {loading ? "Saving..." : "Save"}
         </button>
       </div>

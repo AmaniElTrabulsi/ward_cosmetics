@@ -1,65 +1,83 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Sidebar() {
-  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
 
-  const links = [
-    { name: "Home", href: "/", icon: "🏠" },
-    { name: "Search", href: "/search", icon: "🔍" },
-    { name: "Scan", href: "/scan", icon: "📷" },
-    { name: "Register", href: "/register", icon: "🧾" },
-    { name: "Dashboard", href: "/dashboard", icon: "📊" },
-    { name: "Add Product", href: "/admin/add-product", icon: "➕" },
+  const menu = [
+    { name: "Home", path: "/" },
+    { name: "Search", path: "/search" },
+    { name: "Register", path: "/register" },
+    { name: "Add Product", path: "/admin/add-product" },
   ];
 
   return (
-    <div style={styles.sidebar}>
-      <h2 style={styles.logo}>Ward POS</h2>
+    <>
+      {/* BURGER BUTTON */}
+      <button style={styles.burger} onClick={() => setOpen(true)}>
+        ☰
+      </button>
 
-      {links.map((l) => (
-        <Link
-          key={l.href}
-          href={l.href}
-          style={{
-            ...styles.link,
-            backgroundColor: pathname === l.href ? "#2d3748" : "transparent",
-          }}
-        >
-          <span>{l.icon}</span>
-          <span>{l.name}</span>
-        </Link>
-      ))}
-    </div>
+      {/* OVERLAY */}
+      {open && (
+        <div style={styles.overlay} onClick={() => setOpen(false)}>
+          <div style={styles.sidebar} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ marginBottom: 20 }}>Menu</h3>
+
+            {menu.map((item) => (
+              <div
+                key={item.path}
+                style={styles.item}
+                onClick={() => {
+                  router.push(item.path);
+                  setOpen(false);
+                }}
+              >
+                {item.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
 const styles: any = {
+  burger: {
+    position: "fixed",
+    top: 15,
+    left: 15,
+    fontSize: 26,
+    background: "transparent",
+    border: "none",
+    color: "white",
+    zIndex: 1000,
+  },
+
+  overlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    zIndex: 999,
+  },
+
   sidebar: {
-    width: 220,
-    backgroundColor: "#111827",
-    borderRight: "1px solid #2d3748",
+    width: 250,
+    height: "100%",
+    backgroundColor: "#111",
     padding: 20,
-    minHeight: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
   },
 
-  logo: {
-    marginBottom: 20,
-    color: "white",
-  },
-
-  link: {
-    display: "flex",
-    gap: 10,
-    padding: 12,
-    borderRadius: 10,
-    textDecoration: "none",
-    color: "white",
-    alignItems: "center",
+  item: {
+    padding: 10,
+    cursor: "pointer",
+    borderBottom: "1px solid #333",
   },
 };
