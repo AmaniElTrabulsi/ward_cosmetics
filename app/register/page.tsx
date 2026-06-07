@@ -1,18 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 export default function RegisterPage() {
   const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const scannerRef = useRef<any>(null);
 
   /* ================= FIND PRODUCT ================= */
-  async function findProduct(code?: string) {
-    const value = (code || barcode).trim(); // IMPORTANT FIX
+  async function findProduct(code: string) {
+    const value = code.trim();
     if (!value) return;
 
     setLoading(true);
@@ -21,7 +23,7 @@ export default function RegisterPage() {
       .from("products")
       .select("*")
       .eq("barcode", value)
-      .maybeSingle(); // FIX: safer than .single()
+      .maybeSingle();
 
     if (error || !data) {
       alert("Product not found");
@@ -43,68 +45,86 @@ export default function RegisterPage() {
 
     setBarcode("");
     setLoading(false);
-
-    // keep scanner ready
-    setTimeout(() => inputRef.current?.focus(), 100);
   }
 
-  /* ================= HANDLE SCAN INPUT ================= */
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const value = e.target.value;
-    setBarcode(value);
+  /* ================= START CAMERA SCANNER ================= */
+  function startScanner() {
+    setScannerOpen(true);
 
-    // many scanners send ENTER at end → auto trigger
-    if (value.includes("\n") || value.length >= 6) {
-      findProduct(value);
-    }
+    setTimeout(() => {
+      if (scannerRef.current) return;
+
+      const scanner = new Html5QrcodeScanner(
+        "reader",
+        {
+          fps: 10,
+          qrbox: 250,
+          rememberLastUsedCamera: true,
+          facingMode: "environment", // BACK CAMERA FIX
+        },
+        false
+      );
+
+      scanner.render(
+        (decodedText) => {
+          scanner.clear();
+          setScannerOpen(false);
+          findProduct(decodedText);
+        },
+        (error) => {
+          // ignore scan errors
+        }
+      );
+
+      scannerRef.current = scanner;
+    }, 300);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      findProduct();
+  function stopScanner() {
+    if (scannerRef.current) {
+      scannerRef.current.clear();
+      scannerRef.current = null;
     }
+    setScannerOpen(false);
   }
 
   /* ================= CART ================= */
-  function removeItem(id: string) {
-    setCart(cart.filter((i) => i.id !== id));
-  }
-
   function updateQty(id: string, qty: number) {
-    setCart(
-      cart.map((i) =>
+    setCart((prev) =>
+      prev.map((i) =>
         i.id === id ? { ...i, qty: Math.max(1, qty) } : i
       )
     );
   }
 
+  function removeItem(id: string) {
+    setCart((prev) => prev.filter((i) => i.id !== id));
+  }
+
   const total = cart.reduce(
-    (sum, item) => sum + item.price * item.qty,
+    (sum, i) => sum + i.price * i.qty,
     0
   );
 
   /* ================= CHECKOUT ================= */
   async function checkout() {
-    if (cart.length === 0) return;
+    if (!cart.length) return;
 
     setLoading(true);
 
     try {
       for (const item of cart) {
-        const newStock =
-          (item.stock_quantity || 0) - item.qty;
-
         await supabase
           .from("products")
-          .update({ stock_quantity: newStock })
+          .update({
+            stock_quantity:
+              (item.stock_quantity || 0) - item.qty,
+          })
           .eq("id", item.id);
       }
 
       setCart([]);
       alert("Checkout successful!");
-    } catch (err) {
-      console.log(err);
-      alert("Checkout failed");
     } finally {
       setLoading(false);
     }
@@ -114,44 +134,53 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <h1 style={styles.title}>🧾 Register (POS)</h1>
 
-      {/* SCANNER */}
+      {/* SCANNER CONTROLS */}
       <div style={styles.scanBox}>
         <input
-          ref={inputRef}
           style={styles.input}
-          placeholder="Scan barcode (scanner or camera input)"
+          placeholder="Enter barcode manually"
           value={barcode}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          autoFocus
+          onChange={(e) => setBarcode(e.target.value)}
         />
 
         <button
           style={styles.scanBtn}
-          onClick={() => findProduct()}
+          onClick={() => findProduct(barcode)}
         >
           Add
         </button>
+
+        {/* REAL CAMERA SCAN BUTTON */}
+        <button
+          style={styles.cameraBtn}
+          onClick={startScanner}
+        >
+          📷 Scan
+        </button>
       </div>
+
+      {/* CAMERA VIEW */}
+      {scannerOpen && (
+        <div style={styles.scannerBox}>
+          <div id="reader" />
+          <button onClick={stopScanner} style={styles.stopBtn}>
+            Stop Scanner
+          </button>
+        </div>
+      )}
 
       {/* CART */}
       <div style={styles.cart}>
         <h3>Cart</h3>
 
-        {cart.length === 0 && (
-          <p style={{ color: "#888" }}>No items yet</p>
-        )}
-
         {cart.map((item) => (
           <div key={item.id} style={styles.cartItem}>
             <div>
               <b>{item.name}</b>
-              <p style={{ fontSize: 12, color: "#888" }}>
-                ${item.price}
-              </p>
+              <p>${item.price}</p>
             </div>
 
-            <div style={styles.qtyBox}>
+            <div>
               <button onClick={() => updateQty(item.id, item.qty - 1)}>
                 -
               </button>
@@ -163,10 +192,7 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            <button
-              style={styles.removeBtn}
-              onClick={() => removeItem(item.id)}
-            >
+            <button onClick={() => removeItem(item.id)}>
               ❌
             </button>
           </div>
@@ -174,15 +200,11 @@ export default function RegisterPage() {
       </div>
 
       {/* TOTAL */}
-      <div style={styles.totalBox}>
+      <div style={styles.total}>
         <h2>Total: ${total.toFixed(2)}</h2>
 
-        <button
-          style={styles.checkoutBtn}
-          onClick={checkout}
-          disabled={loading}
-        >
-          💳 Checkout
+        <button onClick={checkout} style={styles.checkout}>
+          Checkout
         </button>
       </div>
     </div>
@@ -194,15 +216,12 @@ export default function RegisterPage() {
 const styles: any = {
   page: {
     padding: 20,
-    backgroundColor: "#0f0f10",
+    background: "#0f0f10",
     minHeight: "100vh",
     color: "white",
-    fontFamily: "Arial",
   },
 
-  title: {
-    marginBottom: 20,
-  },
+  title: { marginBottom: 20 },
 
   scanBox: {
     display: "flex",
@@ -214,22 +233,46 @@ const styles: any = {
     flex: 1,
     padding: 12,
     borderRadius: 10,
-    border: "1px solid #333",
-    backgroundColor: "#1a1a1a",
+    background: "#1a1a1a",
     color: "white",
+    border: "1px solid #333",
   },
 
   scanBtn: {
-    padding: "12px 16px",
-    backgroundColor: "#3b82f6",
-    border: "none",
-    borderRadius: 10,
+    padding: 12,
+    background: "#3b82f6",
     color: "white",
-    cursor: "pointer",
+    borderRadius: 10,
+    border: "none",
+  },
+
+  cameraBtn: {
+    padding: 12,
+    background: "#10b981",
+    color: "black",
+    borderRadius: 10,
+    border: "none",
+    fontWeight: "bold",
+  },
+
+  scannerBox: {
+    marginBottom: 20,
+    background: "#111",
+    padding: 10,
+    borderRadius: 10,
+  },
+
+  stopBtn: {
+    marginTop: 10,
+    padding: 10,
+    background: "red",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
   },
 
   cart: {
-    backgroundColor: "#1a1a1a",
+    background: "#1a1a1a",
     padding: 15,
     borderRadius: 12,
   },
@@ -241,29 +284,16 @@ const styles: any = {
     borderBottom: "1px solid #333",
   },
 
-  qtyBox: {
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-  },
-
-  removeBtn: {
-    background: "transparent",
-    border: "none",
-    color: "red",
-  },
-
-  totalBox: {
+  total: {
     marginTop: 20,
     textAlign: "center",
   },
 
-  checkoutBtn: {
+  checkout: {
     width: "100%",
     padding: 15,
-    backgroundColor: "#4ade80",
+    background: "#4ade80",
     border: "none",
     borderRadius: 10,
-    fontWeight: "bold",
   },
 };
