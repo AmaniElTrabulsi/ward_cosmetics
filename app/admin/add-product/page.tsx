@@ -7,36 +7,51 @@ import { supabase } from "@/lib/supabase";
 export default function AddProduct() {
   const router = useRouter();
 
+  const [mode, setMode] = useState<"new" | "update">("new");
+
+  const [search, setSearch] = useState("");
+  const [existingProduct, setExistingProduct] = useState<any>(null);
+
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [barcode, setBarcode] = useState("");
+
   const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+
   const [loading, setLoading] = useState(false);
 
-  async function handleUpload() {
+  /* ================= SEARCH EXISTING PRODUCT ================= */
+  async function findProduct() {
+    if (!search) return;
+
+    const { data } = await supabase
+      .from("products")
+      .select("*")
+      .or(`name.ilike.%${search}%,barcode.ilike.%${search}%`)
+      .single();
+
+    setExistingProduct(data || null);
+  }
+
+  /* ================= SAVE ================= */
+  async function handleSave() {
     try {
       setLoading(true);
 
-      if (!name || !brand || !price) {
-        alert("Please fill all required fields");
-        setLoading(false);
-        return;
-      }
-
       let imageUrl = "";
 
-      // 1. Upload image if exists
+      // upload image
       if (file) {
         const fileName = `${Date.now()}-${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error } = await supabase.storage
           .from("product-images")
           .upload(`products/${fileName}`, file);
 
-        if (uploadError) {
-          console.log(uploadError);
+        if (error) {
           alert("Image upload failed");
           setLoading(false);
           return;
@@ -49,39 +64,39 @@ export default function AddProduct() {
         imageUrl = data.publicUrl;
       }
 
-      // 2. Insert product
-      const { error: insertError } = await supabase.from("products").insert({
-        name,
-        brand,
-        price: Number(price),
-        stock_quantity: Number(stock || 0),
-        barcode,
-        image_url: imageUrl,
-      });
+      /* ================= NEW PRODUCT ================= */
+      if (mode === "new") {
+        const { error } = await supabase.from("products").insert({
+          name,
+          brand,
+          price: Number(price),
+          stock_quantity: Number(stock || 0),
+          barcode,
+          image_url: imageUrl,
+        });
 
-      if (insertError) {
-        console.log(insertError);
-        alert("Failed to add product");
-        setLoading(false);
-        return;
+        if (error) throw error;
       }
 
-      alert("Product added successfully!");
+      /* ================= UPDATE STOCK ================= */
+      if (mode === "update" && existingProduct) {
+        const { error } = await supabase
+          .from("products")
+          .update({
+            stock_quantity:
+              (existingProduct.stock_quantity || 0) + Number(stock || 0),
+          })
+          .eq("id", existingProduct.id);
 
-      // reset form
-      setName("");
-      setBrand("");
-      setPrice("");
-      setStock("");
-      setBarcode("");
-      setFile(null);
+        if (error) throw error;
+      }
 
-      // 3. Redirect to search page
+      alert("Saved successfully!");
+
       router.push("/search");
-
     } catch (err) {
       console.log(err);
-      alert("Something went wrong");
+      alert("Error saving product");
     } finally {
       setLoading(false);
     }
@@ -90,29 +105,86 @@ export default function AddProduct() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1 style={styles.title}>➕ Add New Product</h1>
-        <p style={styles.subtitle}>Create inventory item</p>
+        <h1 style={styles.title}>➕ Add / Update Product</h1>
 
-        <div style={styles.form}>
-          <input placeholder="Name *" onChange={(e) => setName(e.target.value)} />
-          <input placeholder="Brand *" onChange={(e) => setBrand(e.target.value)} />
-          <input placeholder="Price *" onChange={(e) => setPrice(e.target.value)} />
-          <input placeholder="Stock" onChange={(e) => setStock(e.target.value)} />
-          <input placeholder="Barcode" onChange={(e) => setBarcode(e.target.value)} />
+        {/* MODE SELECT */}
+        <div style={styles.switchRow}>
+          <button
+            style={mode === "new" ? styles.activeBtn : styles.btn}
+            onClick={() => setMode("new")}
+          >
+            New Product
+          </button>
 
-          <label style={styles.label}>📷 Take or upload product photo</label>
-
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-          />
-
-          <button onClick={handleUpload} disabled={loading} style={styles.button}>
-            {loading ? "Saving..." : "Save Product"}
+          <button
+            style={mode === "update" ? styles.activeBtn : styles.btn}
+            onClick={() => setMode("update")}
+          >
+            Update Stock
           </button>
         </div>
+
+        {/* ================= NEW PRODUCT ================= */}
+        {mode === "new" && (
+          <div style={styles.form}>
+            <input placeholder="Name" onChange={(e) => setName(e.target.value)} />
+            <input placeholder="Brand" onChange={(e) => setBrand(e.target.value)} />
+            <input placeholder="Price" onChange={(e) => setPrice(e.target.value)} />
+            <input placeholder="Stock" onChange={(e) => setStock(e.target.value)} />
+            <input placeholder="Barcode" onChange={(e) => setBarcode(e.target.value)} />
+          </div>
+        )}
+
+        {/* ================= UPDATE PRODUCT ================= */}
+        {mode === "update" && (
+          <div style={styles.form}>
+            <input
+              placeholder="Search product (name or barcode)"
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            <button onClick={findProduct} style={styles.smallBtn}>
+              Find Product
+            </button>
+
+            {existingProduct && (
+              <div style={styles.foundBox}>
+                <p>{existingProduct.name}</p>
+                <p>Stock: {existingProduct.stock_quantity}</p>
+              </div>
+            )}
+
+            <input
+              placeholder="Add stock amount"
+              onChange={(e) => setStock(e.target.value)}
+            />
+          </div>
+        )}
+
+        {/* ================= IMAGE ================= */}
+        <label style={styles.label}>📷 Photo (camera or gallery)</label>
+
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              setFile(file);
+              setPreview(URL.createObjectURL(file));
+            }
+          }}
+        />
+
+        {preview && (
+          <img src={preview} style={styles.preview} />
+        )}
+
+        {/* SAVE */}
+        <button onClick={handleSave} disabled={loading} style={styles.saveBtn}>
+          {loading ? "Saving..." : "Save"}
+        </button>
       </div>
     </div>
   );
@@ -126,53 +198,88 @@ const styles: any = {
     backgroundColor: "#0f0f10",
     display: "flex",
     justifyContent: "center",
-    alignItems: "center",
     padding: 20,
-    fontFamily: "Arial",
     color: "white",
   },
 
   card: {
     width: "100%",
-    maxWidth: 420,
+    maxWidth: 450,
     backgroundColor: "#1a1a1a",
-    border: "1px solid #2a2a2a",
     borderRadius: 16,
     padding: 20,
+    border: "1px solid #2a2a2a",
   },
 
   title: {
-    margin: 0,
-    fontSize: 22,
+    marginBottom: 10,
   },
 
-  subtitle: {
-    marginTop: 5,
-    fontSize: 13,
-    color: "#888",
+  switchRow: {
+    display: "flex",
+    gap: 10,
+    marginBottom: 15,
+  },
+
+  btn: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: "#2a2a2a",
+    border: "none",
+    color: "white",
+    borderRadius: 8,
+  },
+
+  activeBtn: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: "#4ade80",
+    border: "none",
+    color: "black",
+    borderRadius: 8,
+    fontWeight: "bold",
   },
 
   form: {
     display: "flex",
     flexDirection: "column",
     gap: 10,
-    marginTop: 20,
+  },
+
+  smallBtn: {
+    padding: 8,
+    backgroundColor: "#333",
+    color: "white",
+    border: "none",
+    borderRadius: 6,
+  },
+
+  foundBox: {
+    padding: 10,
+    backgroundColor: "#111",
+    borderRadius: 8,
+    border: "1px solid #333",
   },
 
   label: {
     fontSize: 12,
     color: "#aaa",
-    marginTop: 5,
+    marginTop: 10,
   },
 
-  button: {
+  preview: {
+    width: "100%",
     marginTop: 10,
-    padding: 12,
     borderRadius: 10,
-    border: "none",
+  },
+
+  saveBtn: {
+    marginTop: 15,
+    padding: 12,
+    width: "100%",
     backgroundColor: "#4ade80",
-    color: "#000",
+    border: "none",
+    borderRadius: 10,
     fontWeight: "bold",
-    cursor: "pointer",
   },
 };
