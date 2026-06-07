@@ -39,34 +39,46 @@ export default function RegisterPage() {
 
   /* ================= START SCANNER ================= */
   async function startScanner() {
-    try {
-      setScanning(true);
+  try {
+    setScanning(true);
 
-      const html5QrCode = new Html5Qrcode("reader");
-      scannerRef.current = html5QrCode;
+    const html5QrCode = new Html5Qrcode("reader");
+    scannerRef.current = html5QrCode;
 
-      const devices = await Html5Qrcode.getCameras();
+    const devices = await Html5Qrcode.getCameras();
 
-      const cameraId = devices?.[0]?.id;
-
-      await html5QrCode.start(
-        cameraId,
-        {
-          fps: 10,
-          qrbox: 250,
-        },
-        (decodedText) => {
-          findProduct(decodedText);
-          stopScanner();
-        },
-        () => {}
-      );
-    } catch (err) {
-      console.log(err);
-      alert("Scanner failed to start");
-      setScanning(false);
+    if (!devices || devices.length === 0) {
+      alert("No camera found");
+      return;
     }
+
+    // 🔥 FIND BACK CAMERA (important fix)
+    const backCamera =
+      devices.find((d) =>
+        d.label.toLowerCase().includes("back") ||
+        d.label.toLowerCase().includes("rear") ||
+        d.label.toLowerCase().includes("environment")
+      ) || devices[devices.length - 1]; // fallback
+
+    await html5QrCode.start(
+      backCamera.id,
+      {
+        fps: 10,
+        qrbox: 250,
+        aspectRatio: 1.0,
+      },
+      (decodedText) => {
+        findProduct(decodedText);
+        stopScanner();
+      },
+      () => {}
+    );
+  } catch (err) {
+    console.log(err);
+    alert("Scanner failed to start");
+    setScanning(false);
   }
+}
 
   /* ================= STOP SCANNER ================= */
   async function stopScanner() {
