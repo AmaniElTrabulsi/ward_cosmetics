@@ -2,27 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Html5Qrcode } from "html5-qrcode";
 
 export default function RegisterPage() {
   const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [scannerOpen, setScannerOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  /* ================= AUTO FOCUS ================= */
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
-
-  function focusInput() {
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 50);
-  }
 
   /* ================= FIND PRODUCT ================= */
   async function findProduct(code?: string) {
@@ -31,23 +21,22 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("products")
       .select("*")
       .eq("barcode", value)
       .single();
 
-    if (!data) {
+    if (error || !data) {
       alert("Product not found");
       setLoading(false);
-      focusInput();
       return;
     }
 
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === data.id);
+      const exists = prev.find((i) => i.id === data.id);
 
-      if (existing) {
+      if (exists) {
         return prev.map((i) =>
           i.id === data.id ? { ...i, qty: i.qty + 1 } : i
         );
@@ -58,44 +47,19 @@ export default function RegisterPage() {
 
     setBarcode("");
     setLoading(false);
-    focusInput();
+
+    setTimeout(() => inputRef.current?.focus(), 50);
   }
 
-  /* ================= SCANNER (FIXED 4 ARGS) ================= */
-  async function startScanner() {
-    setScannerOpen(true);
-
-    setTimeout(async () => {
-      const html5QrCode = new Html5Qrcode("reader");
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: "environment" }, // back camera
-        { fps: 10, qrbox: 250 },
-        async (decodedText) => {
-          await html5QrCode.stop();
-          setScannerOpen(false);
-          findProduct(decodedText);
-        },
-        () => {} // REQUIRED 4th arg (error callback)
-      );
-    }, 200);
-  }
-
-  async function stopScanner() {
-    if (scannerRef.current) {
-      await scannerRef.current.stop().catch(() => {});
-      scannerRef.current = null;
-    }
-    setScannerOpen(false);
-    focusInput();
+  /* ================= SCAN BUTTON ================= */
+  function triggerScan() {
+    inputRef.current?.focus();
   }
 
   /* ================= CART ================= */
-  const total = cart.reduce(
-    (sum, i) => sum + i.price * i.qty,
-    0
-  );
+  function removeItem(id: string) {
+    setCart(cart.filter((i) => i.id !== id));
+  }
 
   function updateQty(id: string, qty: number) {
     setCart((prev) =>
@@ -103,135 +67,144 @@ export default function RegisterPage() {
         i.id === id ? { ...i, qty: Math.max(1, qty) } : i
       )
     );
-    focusInput();
   }
 
-  function removeItem(id: string) {
-    setCart((prev) => prev.filter((i) => i.id !== id));
-    focusInput();
-  }
+  const total = cart.reduce(
+    (sum, item) => sum + item.price * item.qty,
+    0
+  );
 
   /* ================= CHECKOUT ================= */
   async function checkout() {
+    if (cart.length === 0) return;
+
     setLoading(true);
 
-    for (const item of cart) {
-      await supabase
-        .from("products")
-        .update({
-          stock_quantity:
-            (item.stock_quantity || 0) - item.qty,
-        })
-        .eq("id", item.id);
-    }
+    try {
+      for (const item of cart) {
+        const newStock = (item.stock_quantity || 0) - item.qty;
 
-    setCart([]);
-    setLoading(false);
-    focusInput();
-    alert("Checkout successful");
+        await supabase
+          .from("products")
+          .update({ stock_quantity: newStock })
+          .eq("id", item.id);
+      }
+
+      setCart([]);
+      alert("Checkout successful!");
+    } catch (err) {
+      console.log(err);
+      alert("Checkout failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div style={styles.page}>
-      <div style={styles.container}>
-        <h1 style={styles.title}>🧾 Register</h1>
+      <h1 style={styles.title}>🧾 Register</h1>
 
-        {/* INPUT BAR */}
-        <div style={styles.row}>
-          <input
-            ref={inputRef}
-            style={styles.input}
-            placeholder="Scan barcode..."
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") findProduct();
-            }}
-          />
+      {/* SCAN AREA */}
+      <div style={styles.scanBox}>
+        <input
+          ref={inputRef}
+          style={styles.input}
+          placeholder="Scan or type barcode..."
+          value={barcode}
+          onChange={(e) => {
+            const value = e.target.value;
+            setBarcode(value);
 
-          <button style={styles.btnBlue} onClick={() => findProduct()}>
-            Add
-          </button>
+            if (value.length >= 6) {
+              findProduct(value);
+            }
+          }}
+        />
 
-          <button style={styles.btnGreen} onClick={startScanner}>
-            Scan
-          </button>
-        </div>
+        {/* ADD BUTTON */}
+        <button
+          style={styles.addBtn}
+          onClick={() => findProduct()}
+        >
+          Add
+        </button>
 
-        {/* SCANNER */}
-        {scannerOpen && (
-          <div style={styles.card}>
-            <div id="reader" />
-            <button style={styles.btnRed} onClick={stopScanner}>
-              Stop Scanner
-            </button>
-          </div>
+        {/* SCAN BUTTON (RESTORED) */}
+        <button
+          style={styles.scanBtn}
+          onClick={triggerScan}
+        >
+          📷 Scan
+        </button>
+      </div>
+
+      {/* CART */}
+      <div style={styles.card}>
+        <h3>Cart</h3>
+
+        {cart.length === 0 && (
+          <p style={{ color: "#888" }}>No items yet</p>
         )}
 
-        {/* CART */}
-        <div style={styles.card}>
-          <h3>Cart</h3>
-
-          {cart.length === 0 && (
-            <p style={styles.muted}>No items yet</p>
-          )}
-
-          {cart.map((item) => (
-            <div key={item.id} style={styles.item}>
-              <div>
-                <b>{item.name}</b>
-                <p style={styles.muted}>${item.price}</p>
-              </div>
-
-              <div style={styles.qty}>
-                <button onClick={() => updateQty(item.id, item.qty - 1)}>
-                  -
-                </button>
-                <span>{item.qty}</span>
-                <button onClick={() => updateQty(item.id, item.qty + 1)}>
-                  +
-                </button>
-              </div>
-
-              <button onClick={() => removeItem(item.id)}>✕</button>
+        {cart.map((item) => (
+          <div key={item.id} style={styles.item}>
+            <div>
+              <b>{item.name}</b>
+              <p style={{ fontSize: 12, color: "#666" }}>
+                ${item.price}
+              </p>
             </div>
-          ))}
-        </div>
 
-        {/* TOTAL */}
-        <div style={styles.footer}>
-          <h2>Total: ${total.toFixed(2)}</h2>
+            <div style={styles.qty}>
+              <button onClick={() => updateQty(item.id, item.qty - 1)}>
+                -
+              </button>
 
-          <button style={styles.checkout} onClick={checkout}>
-            Checkout
-          </button>
-        </div>
+              <span>{item.qty}</span>
+
+              <button onClick={() => updateQty(item.id, item.qty + 1)}>
+                +
+              </button>
+            </div>
+
+            <button
+              onClick={() => removeItem(item.id)}
+              style={{ color: "red", border: "none", background: "transparent" }}
+            >
+              ❌
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* TOTAL */}
+      <div style={styles.totalBox}>
+        <h2>Total: ${total.toFixed(2)}</h2>
+
+        <button style={styles.checkoutBtn} onClick={checkout}>
+          Checkout
+        </button>
       </div>
     </div>
   );
 }
 
-/* ================= MODERN STYLES ================= */
+/* ================= MODERN LIGHT THEME ================= */
 
 const styles: any = {
   page: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0f0f10, #151a2d)",
     padding: 20,
-    color: "white",
-  },
-
-  container: {
-    maxWidth: 900,
-    margin: "0 auto",
+    background: "#f6f7fb",
+    minHeight: "100vh",
+    fontFamily: "Arial",
   },
 
   title: {
-    fontSize: 24,
+    fontSize: 28,
     marginBottom: 20,
   },
 
-  row: {
+  scanBox: {
     display: "flex",
     gap: 10,
     marginBottom: 20,
@@ -239,27 +212,43 @@ const styles: any = {
 
   input: {
     flex: 1,
-    padding: 12,
-    borderRadius: 10,
-    border: "1px solid #333",
-    backgroundColor: "#111",
+    padding: 14,
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "white",
+    outline: "none",
+  },
+
+  addBtn: {
+    padding: "12px 16px",
+    background: "#6366f1",
     color: "white",
+    border: "none",
+    borderRadius: 12,
+    cursor: "pointer",
+  },
+
+  scanBtn: {
+    padding: "12px 16px",
+    background: "#06b6d4",
+    color: "white",
+    border: "none",
+    borderRadius: 12,
+    cursor: "pointer",
   },
 
   card: {
-    backgroundColor: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    background: "white",
     padding: 15,
-    borderRadius: 14,
-    marginBottom: 15,
-    backdropFilter: "blur(10px)",
+    borderRadius: 16,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
   },
 
   item: {
     display: "flex",
     justifyContent: "space-between",
     padding: 10,
-    borderBottom: "1px solid #333",
+    borderBottom: "1px solid #eee",
   },
 
   qty: {
@@ -268,49 +257,19 @@ const styles: any = {
     alignItems: "center",
   },
 
-  muted: {
-    color: "#aaa",
-    fontSize: 12,
-  },
-
-  btnBlue: {
-    padding: "10px 14px",
-    background: "#3b82f6",
-    border: "none",
-    borderRadius: 10,
-    color: "white",
-  },
-
-  btnGreen: {
-    padding: "10px 14px",
-    background: "#10b981",
-    border: "none",
-    borderRadius: 10,
-    color: "black",
-    fontWeight: "bold",
-  },
-
-  btnRed: {
-    marginTop: 10,
-    width: "100%",
-    padding: 10,
-    background: "#ef4444",
-    border: "none",
-    borderRadius: 10,
-    color: "white",
-  },
-
-  footer: {
-    textAlign: "center",
+  totalBox: {
     marginTop: 20,
+    textAlign: "center",
   },
 
-  checkout: {
+  checkoutBtn: {
     width: "100%",
+    marginTop: 10,
     padding: 14,
-    background: "#4ade80",
+    background: "#10b981",
+    color: "white",
     border: "none",
-    borderRadius: 10,
+    borderRadius: 12,
     fontWeight: "bold",
   },
 };
