@@ -3,38 +3,28 @@
 import { useEffect, useState } from "react";
 
 export default function Home() {
-  const [status, setStatus] = useState("START");
+  const [log, setLog] = useState<string[]>([]);
 
   useEffect(() => {
-    async function test() {
-      try {
-        setStatus("STEP 1: JS OK");
+    setLog((l) => [...l, "USEEFFECT START"]);
 
-        const res = await fetch("https://httpbin.org/get");
-        setStatus("STEP 2: FETCH OK");
+    const run = async () => {
+      setLog((l) => [...l, "ASYNC START"]);
 
-        const json = await res.json();
-        console.log(json);
+      await new Promise((r) => setTimeout(r, 1000));
 
-        setStatus("STEP 3: SUPABASE TEST START");
+      setLog((l) => [...l, "ASYNC DONE"]);
+    };
 
-        const mod = await import("@/lib/supabase");
-        console.log(mod.supabase);
-
-        setStatus("STEP 4: SUPABASE IMPORT OK");
-      } catch (e) {
-        console.log(e);
-        setStatus("ERROR");
-      }
-    }
-
-    test();
+    run();
   }, []);
 
   return (
-    <div style={{ padding: 20, color: "white", background: "#000", minHeight: "100vh" }}>
-      <h1>DEBUG MODE</h1>
-      <p>{status}</p>
+    <div style={{ padding: 20 }}>
+      <h1>TRACE</h1>
+      {log.map((l, i) => (
+        <p key={i}>{l}</p>
+      ))}
     </div>
   );
 }
