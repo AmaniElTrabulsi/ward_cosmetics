@@ -1,39 +1,33 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { Html5Qrcode } from "html5-qrcode";
 
 export default function RegisterPage() {
-  const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [barcode, setBarcode] = useState("");
   const [scanning, setScanning] = useState(false);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const scannerRef = useRef<any>(null);
 
   /* ================= FIND PRODUCT ================= */
-  async function findProduct(code?: string) {
-    const value = code || barcode;
-    if (!value || loading) return;
-
-    setLoading(true);
-
-    const { data, error } = await supabase
+  async function findProduct(code: string) {
+    const { data } = await supabase
       .from("products")
       .select("*")
-      .eq("barcode", value)
+      .eq("barcode", code)
       .single();
 
-    if (error || !data) {
+    if (!data) {
       alert("Product not found");
-      setLoading(false);
       return;
     }
 
     setCart((prev) => {
-      const existing = prev.find((i) => i.id === data.id);
+      const exists = prev.find((i) => i.id === data.id);
 
-      if (existing) {
+      if (exists) {
         return prev.map((i) =>
           i.id === data.id ? { ...i, qty: i.qty + 1 } : i
         );
@@ -41,257 +35,133 @@ export default function RegisterPage() {
 
       return [...prev, { ...data, qty: 1 }];
     });
-
-    setBarcode("");
-    setLoading(false);
-
-    inputRef.current?.focus();
   }
 
-  /* ================= SCAN MODE (UX FIX) ================= */
-  function triggerScan() {
-    setScanning(true);
-    inputRef.current?.focus();
-
-    setTimeout(() => {
-      setScanning(false);
-    }, 4000);
-  }
-
-  /* ================= CART ================= */
-  function removeItem(id: string) {
-    setCart((prev) => prev.filter((i) => i.id !== id));
-  }
-
-  function updateQty(id: string, qty: number) {
-    setCart((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, qty: Math.max(1, qty) } : i
-      )
-    );
-  }
-
-  const total = cart.reduce(
-    (sum, item) => sum + item.price * item.qty,
-    0
-  );
-
-  /* ================= CHECKOUT ================= */
-  async function checkout() {
-    if (cart.length === 0 || loading) return;
-
-    setLoading(true);
-
+  /* ================= START SCANNER ================= */
+  async function startScanner() {
     try {
-      for (const item of cart) {
-        const newStock =
-          (item.stock_quantity || 0) - item.qty;
+      setScanning(true);
 
-        await supabase
-          .from("products")
-          .update({ stock_quantity: newStock })
-          .eq("id", item.id);
-      }
+      const html5QrCode = new Html5Qrcode("reader");
+      scannerRef.current = html5QrCode;
 
-      setCart([]);
-      alert("Checkout successful!");
+      const devices = await Html5Qrcode.getCameras();
+
+      const cameraId = devices?.[0]?.id;
+
+      await html5QrCode.start(
+        cameraId,
+        {
+          fps: 10,
+          qrbox: 250,
+        },
+        (decodedText) => {
+          findProduct(decodedText);
+          stopScanner();
+        },
+        () => {}
+      );
     } catch (err) {
       console.log(err);
-      alert("Checkout failed");
-    } finally {
-      setLoading(false);
+      alert("Scanner failed to start");
+      setScanning(false);
     }
   }
 
+  /* ================= STOP SCANNER ================= */
+  async function stopScanner() {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      }
+    } catch {}
+
+    setScanning(false);
+  }
+
+  /* ================= CART ================= */
+  const total = cart.reduce(
+    (sum, i) => sum + i.price * i.qty,
+    0
+  );
+
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>🧾 Register (POS)</h1>
+      <h1>🧾 Register (POS)</h1>
 
-      {scanning && (
-        <div style={styles.scanHint}>
-          📷 Scan mode active... focus barcode
-        </div>
-      )}
-
-      {/* SCANNER INPUT */}
-      <div style={styles.scanBox}>
+      {/* INPUT */}
+      <div style={styles.row}>
         <input
-          ref={inputRef}
-          style={styles.input}
-          placeholder="Scan barcode (camera / scanner / keyboard)"
           value={barcode}
-          onChange={(e) => {
-            const value = e.target.value;
-            setBarcode(value);
-
-            if (value.length >= 6) {
-              findProduct(value);
-            }
-          }}
+          onChange={(e) => setBarcode(e.target.value)}
+          placeholder="Enter barcode"
+          style={styles.input}
         />
 
-        <button
-          style={styles.scanBtn}
-          onClick={() => findProduct()}
-          disabled={loading}
-        >
+        <button onClick={() => findProduct(barcode)}>
           Add
         </button>
 
-        <button
-          style={styles.cameraBtn}
-          onClick={triggerScan}
-        >
-          📷 Scan
-        </button>
+        {!scanning ? (
+          <button onClick={startScanner}>📷 Scan</button>
+        ) : (
+          <button onClick={stopScanner}>Stop</button>
+        )}
       </div>
+
+      {/* CAMERA VIEW */}
+      <div
+        id="reader"
+        style={{
+          width: "100%",
+          marginTop: 10,
+          borderRadius: 10,
+          overflow: "hidden",
+        }}
+      />
 
       {/* CART */}
       <div style={styles.cart}>
-        <h3>Cart</h3>
-
-        {cart.length === 0 && (
-          <p style={{ color: "#888" }}>No items yet</p>
-        )}
-
-        {cart.map((item) => (
-          <div key={item.id} style={styles.cartItem}>
-            <div>
-              <b>{item.name}</b>
-              <p style={{ fontSize: 12, color: "#888" }}>
-                ${item.price}
-              </p>
-            </div>
-
-            <div style={styles.qtyBox}>
-              <button onClick={() => updateQty(item.id, item.qty - 1)}>
-                -
-              </button>
-
-              <span>{item.qty}</span>
-
-              <button onClick={() => updateQty(item.id, item.qty + 1)}>
-                +
-              </button>
-            </div>
-
-            <button
-              style={styles.removeBtn}
-              onClick={() => removeItem(item.id)}
-            >
-              ❌
-            </button>
+        {cart.map((i) => (
+          <div key={i.id} style={styles.item}>
+            <b>{i.name}</b>
+            <span>{i.qty}</span>
           </div>
         ))}
       </div>
 
-      {/* TOTAL */}
-      <div style={styles.totalBox}>
-        <h2>Total: ${total.toFixed(2)}</h2>
-
-        <button
-          style={styles.checkoutBtn}
-          onClick={checkout}
-          disabled={loading}
-        >
-          💳 Checkout
-        </button>
-      </div>
+      <h2>Total: ${total.toFixed(2)}</h2>
     </div>
   );
 }
 
-/* ================= STYLES ================= */
-
 const styles: any = {
   page: {
     padding: 20,
-    backgroundColor: "#0f0f10",
-    minHeight: "100vh",
+    background: "#0b0f19",
     color: "white",
+    minHeight: "100vh",
   },
 
-  title: {
-    marginBottom: 20,
-  },
-
-  scanHint: {
-    marginBottom: 10,
-    padding: 10,
-    backgroundColor: "#1f2937",
-    borderRadius: 8,
-    fontSize: 12,
-    color: "#93c5fd",
-  },
-
-  scanBox: {
+  row: {
     display: "flex",
-    gap: 8,
-    marginBottom: 20,
+    gap: 10,
   },
 
   input: {
     flex: 1,
-    padding: 12,
-    borderRadius: 10,
-    border: "1px solid #333",
-    backgroundColor: "#1a1a1a",
-    color: "white",
-  },
-
-  scanBtn: {
-    padding: "12px 14px",
-    backgroundColor: "#3b82f6",
-    border: "none",
-    borderRadius: 10,
-    color: "white",
-  },
-
-  cameraBtn: {
-    padding: "12px 14px",
-    backgroundColor: "#10b981",
-    border: "none",
-    borderRadius: 10,
-    color: "black",
-    fontWeight: "bold",
+    padding: 10,
   },
 
   cart: {
-    backgroundColor: "#1a1a1a",
-    padding: 15,
-    borderRadius: 12,
+    marginTop: 20,
+    padding: 10,
+    background: "#111827",
   },
 
-  cartItem: {
+  item: {
     display: "flex",
     justifyContent: "space-between",
-    padding: 10,
-    borderBottom: "1px solid #333",
-  },
-
-  qtyBox: {
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-  },
-
-  removeBtn: {
-    background: "transparent",
-    border: "none",
-    color: "red",
-  },
-
-  totalBox: {
-    marginTop: 20,
-    textAlign: "center",
-  },
-
-  checkoutBtn: {
-    width: "100%",
-    padding: 15,
-    backgroundColor: "#4ade80",
-    border: "none",
-    borderRadius: 10,
-    fontWeight: "bold",
   },
 };
