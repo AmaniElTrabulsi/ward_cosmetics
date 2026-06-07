@@ -1,112 +1,102 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-export default function Register() {
+export default function AddProduct() {
+  const router = useRouter();
+
+  const [name, setName] = useState("");
+  const [brand, setBrand] = useState("");
+  const [price, setPrice] = useState("");
+  const [stock, setStock] = useState("");
   const [barcode, setBarcode] = useState("");
-  const [cart, setCart] = useState<any[]>([]);
+  const [file, setFile] = useState<File | null>(null);
 
-  async function add() {
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .eq("barcode", barcode)
-      .single();
+  const [loading, setLoading] = useState(false);
 
-    if (!data) return;
+  async function save() {
+    setLoading(true);
 
-    setCart((prev) => {
-      const found = prev.find((i) => i.id === data.id);
+    let imageUrl = "";
 
-      if (found) {
-        return prev.map((i) =>
-          i.id === data.id ? { ...i, qty: i.qty + 1 } : i
-        );
-      }
+    if (file) {
+      const fileName = Date.now() + file.name;
 
-      return [...prev, { ...data, qty: 1 }];
-    });
+      await supabase.storage
+        .from("product-images")
+        .upload("products/" + fileName, file);
 
-    setBarcode("");
-  }
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl("products/" + fileName);
 
-  async function checkout() {
-    for (const item of cart) {
-      await supabase
-        .from("products")
-        .update({
-          stock_quantity: item.stock_quantity - item.qty,
-        })
-        .eq("id", item.id);
+      imageUrl = data.publicUrl;
     }
 
-    setCart([]);
-    alert("Done");
+    await supabase.from("products").insert({
+      name,
+      brand,
+      price: Number(price),
+      stock_quantity: Number(stock),
+      barcode,
+      image_url: imageUrl,
+    });
+
+    router.push("/search");
   }
 
   return (
-    <div>
-      <h2>Register</h2>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <h2>➕ Add Product</h2>
 
-      <div style={styles.row}>
+        <input placeholder="Name" onChange={(e) => setName(e.target.value)} />
+        <input placeholder="Brand" onChange={(e) => setBrand(e.target.value)} />
+        <input placeholder="Price" onChange={(e) => setPrice(e.target.value)} />
+        <input placeholder="Stock" onChange={(e) => setStock(e.target.value)} />
+        <input placeholder="Barcode" onChange={(e) => setBarcode(e.target.value)} />
+
+        {/* CAMERA + GALLERY FIX */}
         <input
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          style={styles.input}
-          placeholder="Scan barcode"
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
 
-        <button onClick={add} style={styles.btn}>
-          Add
+        <button onClick={save} style={styles.btn}>
+          Save
         </button>
       </div>
-
-      {cart.map((i) => (
-        <div key={i.id} style={styles.item}>
-          {i.name} x {i.qty}
-        </div>
-      ))}
-
-      <button onClick={checkout} style={styles.checkout}>
-        Checkout
-      </button>
     </div>
   );
 }
 
 const styles: any = {
-  row: { display: "flex", gap: 10 },
+  page: {
+    display: "flex",
+    justifyContent: "center",
+  },
 
-  input: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 10,
-    border: "1px solid #ddd",
+  card: {
+    width: 400,
+    background: "white",
+    padding: 20,
+    borderRadius: 16,
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
   },
 
   btn: {
-    padding: "12px 16px",
+    marginTop: 10,
+    padding: 12,
     background: "#6366f1",
     color: "white",
     border: "none",
     borderRadius: 10,
-  },
-
-  item: {
-    padding: 10,
-    background: "#f1f5f9",
-    marginTop: 8,
-    borderRadius: 10,
-  },
-
-  checkout: {
-    marginTop: 15,
-    width: "100%",
-    padding: 15,
-    background: "#10b981",
-    color: "white",
-    border: "none",
-    borderRadius: 12,
   },
 };

@@ -13,12 +13,9 @@ export default function AddProduct() {
   const [stock, setStock] = useState("");
   const [barcode, setBarcode] = useState("");
   const [file, setFile] = useState<File | null>(null);
-
-  const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState("");
 
   async function save() {
-    setLoading(true);
-
     let imageUrl = "";
 
     if (file) {
@@ -50,7 +47,7 @@ export default function AddProduct() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h2>➕ Add Product</h2>
+        <h2>Add Product</h2>
 
         <input placeholder="Name" onChange={(e) => setName(e.target.value)} />
         <input placeholder="Brand" onChange={(e) => setBrand(e.target.value)} />
@@ -63,8 +60,18 @@ export default function AddProduct() {
           type="file"
           accept="image/*"
           capture="environment"
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) {
+              setFile(f);
+              setPreview(URL.createObjectURL(f));
+            }
+          }}
         />
+
+        {preview && (
+          <img src={preview} style={{ width: "100%", marginTop: 10 }} />
+        )}
 
         <button onClick={save} style={styles.btn}>
           Save
@@ -75,28 +82,21 @@ export default function AddProduct() {
 }
 
 const styles: any = {
-  page: {
-    display: "flex",
-    justifyContent: "center",
-  },
+  page: { display: "flex", justifyContent: "center", padding: 20 },
 
   card: {
     width: 400,
     background: "white",
     padding: 20,
     borderRadius: 16,
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    display: "flex",
-    flexDirection: "column",
-    gap: 10,
   },
 
   btn: {
     marginTop: 10,
+    width: "100%",
     padding: 12,
     background: "#6366f1",
     color: "white",
     border: "none",
-    borderRadius: 10,
   },
 };
