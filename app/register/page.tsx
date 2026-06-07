@@ -11,7 +11,7 @@ export default function RegisterPage() {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerId = "reader";
 
-  /* ================= ADD ITEM ================= */
+  /* ================= ADD PRODUCT ================= */
   async function addByBarcode(code: string) {
     const { data } = await supabase
       .from("products")
@@ -37,18 +37,18 @@ export default function RegisterPage() {
     });
   }
 
-  /* ================= START SCANNER (SAFE) ================= */
+  /* ================= START SCANNER ================= */
   async function startScanner() {
     setScannerOpen(true);
   }
 
-  /* ================= EFFECT: START CAMERA ONLY AFTER RENDER ================= */
+  /* ================= INIT CAMERA AFTER RENDER ================= */
   useEffect(() => {
     if (!scannerOpen) return;
 
     let html5QrCode: Html5Qrcode;
 
-    const init = async () => {
+    const initCamera = async () => {
       try {
         html5QrCode = new Html5Qrcode(readerId);
         scannerRef.current = html5QrCode;
@@ -71,25 +71,25 @@ export default function RegisterPage() {
             fps: 10,
             qrbox: { width: 250, height: 250 },
           },
-          async (text) => {
+          async (decodedText) => {
             await stopScanner();
-            addByBarcode(text);
-          }
+            addByBarcode(decodedText);
+          },
+          () => {} // ✅ FIX: required 4th argument
         );
       } catch (err) {
-        console.log("CAMERA ERROR:", err);
-        alert("Camera failed to open (check permissions)");
+        console.log("Camera error:", err);
+        alert("Camera failed to open");
         setScannerOpen(false);
       }
     };
 
-    // 🔥 IMPORTANT: wait for DOM render
-    const timeout = setTimeout(init, 300);
+    const timer = setTimeout(initCamera, 300);
 
-    return () => clearTimeout(timeout);
+    return () => clearTimeout(timer);
   }, [scannerOpen]);
 
-  /* ================= STOP ================= */
+  /* ================= STOP SCANNER ================= */
   async function stopScanner() {
     try {
       if (scannerRef.current) {
@@ -114,22 +114,21 @@ export default function RegisterPage() {
     }
 
     setCart([]);
-    alert("Checkout done");
+    alert("Checkout successful");
   }
 
-  const total = cart.reduce(
-    (s, i) => s + i.price * i.qty,
-    0
-  );
+  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
     <div style={styles.page}>
-      <h1>🧾 Register</h1>
+      <h1 style={styles.title}>🧾 Register (POS)</h1>
 
+      {/* SCAN BUTTON */}
       <button style={styles.scanBtn} onClick={startScanner}>
         📷 Scan Barcode
       </button>
 
+      {/* CAMERA */}
       {scannerOpen && (
         <div style={styles.cameraBox}>
           <div id={readerId} style={{ width: "100%" }} />
@@ -139,15 +138,21 @@ export default function RegisterPage() {
         </div>
       )}
 
+      {/* CART */}
       <div style={styles.card}>
+        {cart.length === 0 && (
+          <p style={{ color: "#888" }}>No items yet</p>
+        )}
+
         {cart.map((item) => (
           <div key={item.id} style={styles.row}>
             <b>{item.name}</b>
-            <span>{item.qty}</span>
+            <span>× {item.qty}</span>
           </div>
         ))}
       </div>
 
+      {/* TOTAL */}
       <h2>Total: ${total.toFixed(2)}</h2>
 
       <button onClick={checkout} style={styles.payBtn}>
@@ -157,11 +162,18 @@ export default function RegisterPage() {
   );
 }
 
+/* ================= STYLES ================= */
+
 const styles: any = {
   page: {
     padding: 20,
     background: "#f6f7fb",
     minHeight: "100vh",
+    fontFamily: "Arial",
+  },
+
+  title: {
+    marginBottom: 15,
   },
 
   scanBtn: {
@@ -193,6 +205,7 @@ const styles: any = {
     background: "white",
     padding: 15,
     borderRadius: 12,
+    marginTop: 10,
   },
 
   row: {
@@ -204,11 +217,12 @@ const styles: any = {
 
   payBtn: {
     width: "100%",
-    marginTop: 10,
+    marginTop: 15,
     padding: 15,
     background: "#10b981",
     border: "none",
     borderRadius: 12,
     color: "white",
+    fontWeight: "bold",
   },
 };
