@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function RegisterPage() {
   const [barcode, setBarcode] = useState("");
   const [cart, setCart] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
 
-  /* ================= ADD PRODUCT BY BARCODE ================= */
-  async function addByBarcode(code?: string) {
-    const value = code || barcode;
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  /* ================= FIND PRODUCT ================= */
+  async function findProduct(code?: string) {
+    const value = (code || barcode).trim(); // IMPORTANT FIX
     if (!value) return;
 
     setLoading(true);
@@ -20,7 +21,7 @@ export default function RegisterPage() {
       .from("products")
       .select("*")
       .eq("barcode", value)
-      .single();
+      .maybeSingle(); // FIX: safer than .single()
 
     if (error || !data) {
       alert("Product not found");
@@ -29,13 +30,11 @@ export default function RegisterPage() {
     }
 
     setCart((prev) => {
-      const exists = prev.find((p) => p.id === data.id);
+      const existing = prev.find((i) => i.id === data.id);
 
-      if (exists) {
-        return prev.map((p) =>
-          p.id === data.id
-            ? { ...p, qty: p.qty + 1 }
-            : p
+      if (existing) {
+        return prev.map((i) =>
+          i.id === data.id ? { ...i, qty: i.qty + 1 } : i
         );
       }
 
@@ -44,52 +43,39 @@ export default function RegisterPage() {
 
     setBarcode("");
     setLoading(false);
+
+    // keep scanner ready
+    setTimeout(() => inputRef.current?.focus(), 100);
   }
 
-  /* ================= CAMERA SCAN (BACK CAMERA) ================= */
-  async function startScan() {
-    try {
-      setScanning(true);
+  /* ================= HANDLE SCAN INPUT ================= */
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    setBarcode(value);
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { exact: "environment" }, // BACK CAMERA FIX
-        },
-      });
-
-      const video = document.getElementById("video") as HTMLVideoElement;
-      if (video) {
-        video.srcObject = stream;
-        video.play();
-      }
-    } catch (err) {
-      console.log(err);
-
-      alert("Camera not supported or permission denied");
-      setScanning(false);
+    // many scanners send ENTER at end → auto trigger
+    if (value.includes("\n") || value.length >= 6) {
+      findProduct(value);
     }
   }
 
-  function stopScan() {
-    const video = document.getElementById("video") as HTMLVideoElement;
-    const stream = video?.srcObject as MediaStream;
-
-    stream?.getTracks().forEach((t) => t.stop());
-
-    setScanning(false);
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      findProduct();
+    }
   }
 
   /* ================= CART ================= */
-  function updateQty(id: string, qty: number) {
-    setCart((prev) =>
-      prev.map((p) =>
-        p.id === id ? { ...p, qty: Math.max(1, qty) } : p
-      )
-    );
+  function removeItem(id: string) {
+    setCart(cart.filter((i) => i.id !== id));
   }
 
-  function removeItem(id: string) {
-    setCart((prev) => prev.filter((p) => p.id !== id));
+  function updateQty(id: string, qty: number) {
+    setCart(
+      cart.map((i) =>
+        i.id === id ? { ...i, qty: Math.max(1, qty) } : i
+      )
+    );
   }
 
   const total = cart.reduce(
@@ -97,7 +83,7 @@ export default function RegisterPage() {
     0
   );
 
-  /* ================= CHECKOUT (DECREASE STOCK) ================= */
+  /* ================= CHECKOUT ================= */
   async function checkout() {
     if (cart.length === 0) return;
 
@@ -110,14 +96,12 @@ export default function RegisterPage() {
 
         await supabase
           .from("products")
-          .update({
-            stock_quantity: newStock,
-          })
+          .update({ stock_quantity: newStock })
           .eq("id", item.id);
       }
 
       setCart([]);
-      alert("Checkout successful");
+      alert("Checkout successful!");
     } catch (err) {
       console.log(err);
       alert("Checkout failed");
@@ -128,54 +112,46 @@ export default function RegisterPage() {
 
   return (
     <div style={styles.page}>
-      <h1>🧾 Register (POS)</h1>
+      <h1 style={styles.title}>🧾 Register (POS)</h1>
 
-      {/* BARCODE INPUT */}
-      <div style={styles.row}>
+      {/* SCANNER */}
+      <div style={styles.scanBox}>
         <input
-          value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
-          placeholder="Scan or enter barcode"
+          ref={inputRef}
           style={styles.input}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") addByBarcode();
-          }}
+          placeholder="Scan barcode (scanner or camera input)"
+          value={barcode}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          autoFocus
         />
 
-        <button onClick={() => addByBarcode()} style={styles.btn}>
+        <button
+          style={styles.scanBtn}
+          onClick={() => findProduct()}
+        >
           Add
         </button>
-
-        {!scanning ? (
-          <button onClick={startScan} style={styles.scan}>
-            📷 Scan
-          </button>
-        ) : (
-          <button onClick={stopScan} style={styles.stop}>
-            Stop
-          </button>
-        )}
       </div>
-
-      {/* CAMERA VIEW */}
-      {scanning && (
-        <video id="video" style={styles.video} />
-      )}
 
       {/* CART */}
       <div style={styles.cart}>
+        <h3>Cart</h3>
+
         {cart.length === 0 && (
-          <p style={{ color: "#888" }}>Cart empty</p>
+          <p style={{ color: "#888" }}>No items yet</p>
         )}
 
         {cart.map((item) => (
-          <div key={item.id} style={styles.item}>
+          <div key={item.id} style={styles.cartItem}>
             <div>
               <b>{item.name}</b>
-              <p>${item.price}</p>
+              <p style={{ fontSize: 12, color: "#888" }}>
+                ${item.price}
+              </p>
             </div>
 
-            <div style={styles.qty}>
+            <div style={styles.qtyBox}>
               <button onClick={() => updateQty(item.id, item.qty - 1)}>
                 -
               </button>
@@ -187,7 +163,10 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            <button onClick={() => removeItem(item.id)}>
+            <button
+              style={styles.removeBtn}
+              onClick={() => removeItem(item.id)}
+            >
               ❌
             </button>
           </div>
@@ -195,11 +174,17 @@ export default function RegisterPage() {
       </div>
 
       {/* TOTAL */}
-      <h2>Total: ${total.toFixed(2)}</h2>
+      <div style={styles.totalBox}>
+        <h2>Total: ${total.toFixed(2)}</h2>
 
-      <button onClick={checkout} style={styles.checkout}>
-        💳 Checkout (Deduct Stock)
-      </button>
+        <button
+          style={styles.checkoutBtn}
+          onClick={checkout}
+          disabled={loading}
+        >
+          💳 Checkout
+        </button>
+      </div>
     </div>
   );
 }
@@ -209,71 +194,76 @@ export default function RegisterPage() {
 const styles: any = {
   page: {
     padding: 20,
+    backgroundColor: "#0f0f10",
+    minHeight: "100vh",
+    color: "white",
     fontFamily: "Arial",
   },
 
-  row: {
+  title: {
+    marginBottom: 20,
+  },
+
+  scanBox: {
     display: "flex",
     gap: 10,
+    marginBottom: 20,
   },
 
   input: {
     flex: 1,
     padding: 12,
     borderRadius: 10,
-    border: "1px solid #ccc",
-  },
-
-  btn: {
-    padding: 12,
-    background: "#6366f1",
+    border: "1px solid #333",
+    backgroundColor: "#1a1a1a",
     color: "white",
-    border: "none",
   },
 
-  scan: {
-    padding: 12,
-    background: "#10b981",
-    color: "black",
+  scanBtn: {
+    padding: "12px 16px",
+    backgroundColor: "#3b82f6",
     border: "none",
-  },
-
-  stop: {
-    padding: 12,
-    background: "#ef4444",
+    borderRadius: 10,
     color: "white",
-    border: "none",
-  },
-
-  video: {
-    width: "100%",
-    marginTop: 10,
-    borderRadius: 12,
+    cursor: "pointer",
   },
 
   cart: {
-    marginTop: 20,
+    backgroundColor: "#1a1a1a",
+    padding: 15,
+    borderRadius: 12,
   },
 
-  item: {
+  cartItem: {
     display: "flex",
     justifyContent: "space-between",
     padding: 10,
-    borderBottom: "1px solid #eee",
+    borderBottom: "1px solid #333",
   },
 
-  qty: {
+  qtyBox: {
     display: "flex",
     gap: 10,
     alignItems: "center",
   },
 
-  checkout: {
+  removeBtn: {
+    background: "transparent",
+    border: "none",
+    color: "red",
+  },
+
+  totalBox: {
+    marginTop: 20,
+    textAlign: "center",
+  },
+
+  checkoutBtn: {
     width: "100%",
     padding: 15,
-    background: "#10b981",
+    backgroundColor: "#4ade80",
     border: "none",
-    marginTop: 20,
     borderRadius: 10,
+    fontWeight: "bold",
   },
 };
