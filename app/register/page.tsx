@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Html5Qrcode } from "html5-qrcode";
 
@@ -10,7 +10,19 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
 
+  const inputRef = useRef<HTMLInputElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+
+  /* ================= AUTO FOCUS ================= */
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  function focusInput() {
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+  }
 
   /* ================= FIND PRODUCT ================= */
   async function findProduct(code?: string) {
@@ -28,6 +40,7 @@ export default function RegisterPage() {
     if (!data) {
       alert("Product not found");
       setLoading(false);
+      focusInput();
       return;
     }
 
@@ -45,9 +58,10 @@ export default function RegisterPage() {
 
     setBarcode("");
     setLoading(false);
+    focusInput();
   }
 
-  /* ================= SCANNER ================= */
+  /* ================= SCANNER (FIXED 4 ARGS) ================= */
   async function startScanner() {
     setScannerOpen(true);
 
@@ -56,13 +70,14 @@ export default function RegisterPage() {
       scannerRef.current = html5QrCode;
 
       await html5QrCode.start(
-        { facingMode: "environment" },
+        { facingMode: "environment" }, // back camera
         { fps: 10, qrbox: 250 },
-        async (text) => {
+        async (decodedText) => {
           await html5QrCode.stop();
           setScannerOpen(false);
-          findProduct(text);
-        }
+          findProduct(decodedText);
+        },
+        () => {} // REQUIRED 4th arg (error callback)
       );
     }, 200);
   }
@@ -73,6 +88,7 @@ export default function RegisterPage() {
       scannerRef.current = null;
     }
     setScannerOpen(false);
+    focusInput();
   }
 
   /* ================= CART ================= */
@@ -87,10 +103,12 @@ export default function RegisterPage() {
         i.id === id ? { ...i, qty: Math.max(1, qty) } : i
       )
     );
+    focusInput();
   }
 
   function removeItem(id: string) {
     setCart((prev) => prev.filter((i) => i.id !== id));
+    focusInput();
   }
 
   /* ================= CHECKOUT ================= */
@@ -101,13 +119,15 @@ export default function RegisterPage() {
       await supabase
         .from("products")
         .update({
-          stock_quantity: (item.stock_quantity || 0) - item.qty,
+          stock_quantity:
+            (item.stock_quantity || 0) - item.qty,
         })
         .eq("id", item.id);
     }
 
     setCart([]);
     setLoading(false);
+    focusInput();
     alert("Checkout successful");
   }
 
@@ -119,10 +139,14 @@ export default function RegisterPage() {
         {/* INPUT BAR */}
         <div style={styles.row}>
           <input
+            ref={inputRef}
             style={styles.input}
-            placeholder="Scan or enter barcode"
+            placeholder="Scan barcode..."
             value={barcode}
             onChange={(e) => setBarcode(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") findProduct();
+            }}
           />
 
           <button style={styles.btnBlue} onClick={() => findProduct()}>
@@ -139,14 +163,14 @@ export default function RegisterPage() {
           <div style={styles.card}>
             <div id="reader" />
             <button style={styles.btnRed} onClick={stopScanner}>
-              Stop
+              Stop Scanner
             </button>
           </div>
         )}
 
         {/* CART */}
         <div style={styles.card}>
-          <h3 style={styles.sectionTitle}>Cart</h3>
+          <h3>Cart</h3>
 
           {cart.length === 0 && (
             <p style={styles.muted}>No items yet</p>
@@ -169,12 +193,7 @@ export default function RegisterPage() {
                 </button>
               </div>
 
-              <button
-                style={styles.delete}
-                onClick={() => removeItem(item.id)}
-              >
-                ✕
-              </button>
+              <button onClick={() => removeItem(item.id)}>✕</button>
             </div>
           ))}
         </div>
@@ -192,13 +211,13 @@ export default function RegisterPage() {
   );
 }
 
-/* ================= STYLES (MATCH APP THEME) ================= */
+/* ================= MODERN STYLES ================= */
 
 const styles: any = {
   page: {
-    padding: 20,
-    backgroundColor: "#0f0f10",
     minHeight: "100vh",
+    background: "linear-gradient(135deg, #0f0f10, #151a2d)",
+    padding: 20,
     color: "white",
   },
 
@@ -222,21 +241,18 @@ const styles: any = {
     flex: 1,
     padding: 12,
     borderRadius: 10,
-    backgroundColor: "#1a1a1a",
     border: "1px solid #333",
+    backgroundColor: "#111",
     color: "white",
   },
 
   card: {
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.1)",
     padding: 15,
-    borderRadius: 12,
+    borderRadius: 14,
     marginBottom: 15,
-    border: "1px solid #2a2a2a",
-  },
-
-  sectionTitle: {
-    marginBottom: 10,
+    backdropFilter: "blur(10px)",
   },
 
   item: {
@@ -253,23 +269,23 @@ const styles: any = {
   },
 
   muted: {
-    color: "#888",
+    color: "#aaa",
     fontSize: 12,
   },
 
   btnBlue: {
     padding: "10px 14px",
-    backgroundColor: "#3b82f6",
+    background: "#3b82f6",
     border: "none",
-    borderRadius: 8,
+    borderRadius: 10,
     color: "white",
   },
 
   btnGreen: {
     padding: "10px 14px",
-    backgroundColor: "#10b981",
+    background: "#10b981",
     border: "none",
-    borderRadius: 8,
+    borderRadius: 10,
     color: "black",
     fontWeight: "bold",
   },
@@ -278,16 +294,10 @@ const styles: any = {
     marginTop: 10,
     width: "100%",
     padding: 10,
-    backgroundColor: "#ef4444",
+    background: "#ef4444",
     border: "none",
-    borderRadius: 8,
+    borderRadius: 10,
     color: "white",
-  },
-
-  delete: {
-    background: "transparent",
-    border: "none",
-    color: "red",
   },
 
   footer: {
@@ -298,7 +308,7 @@ const styles: any = {
   checkout: {
     width: "100%",
     padding: 14,
-    backgroundColor: "#4ade80",
+    background: "#4ade80",
     border: "none",
     borderRadius: 10,
     fontWeight: "bold",
