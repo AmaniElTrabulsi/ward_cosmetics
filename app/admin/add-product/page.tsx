@@ -61,18 +61,7 @@ export default function AddProduct() {
           accept="image/*"
         />
 
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) {
-              setFile(f);
-              setPreview(URL.createObjectURL(f));
-            }
-          }}
-        />
+        
 
         {preview && (
           <img src={preview} style={{ width: "100%", marginTop: 10 }} />
