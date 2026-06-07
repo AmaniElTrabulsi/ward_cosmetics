@@ -1,11 +1,5 @@
-import type { Metadata } from "next";
-import "./globals.css";
 import Sidebar from "@/components/Sidebar";
-
-export const metadata: Metadata = {
-  title: "Ward Cosmetics POS",
-  description: "Inventory & POS System",
-};
+import "./globals.css";
 
 export default function RootLayout({
   children,
@@ -26,14 +20,12 @@ export default function RootLayout({
 const styles: any = {
   body: {
     margin: 0,
-    fontFamily: "Inter, Arial, sans-serif",
-    background: "#0b1220",
-    color: "#e5e7eb",
+    fontFamily: "Arial",
+    background: "#f6f7fb",
   },
 
   main: {
-    marginLeft: 70,
-    padding: 24,
-    minHeight: "100vh",
+    paddingTop: 70,
+    padding: 20,
   },
 };

@@ -6,27 +6,27 @@ export default function Home() {
   const router = useRouter();
 
   const cards = [
-    { title: "Search Products", icon: "🔍", route: "/search" },
-    { title: "Scan Barcode", icon: "📷", route: "/scan" },
-    { title: "Register POS", icon: "🧾", route: "/register" },
-    { title: "Add Product", icon: "➕", route: "/admin/add-product" },
-    { title: "Dashboard", icon: "📊", route: "/dashboard" },
+    { title: "Search", icon: "🔍", route: "/search", color: "#6366f1" },
+    { title: "Scan", icon: "📷", route: "/scan", color: "#06b6d4" },
+    { title: "Register", icon: "🧾", route: "/register", color: "#10b981" },
+    { title: "Add Product", icon: "➕", route: "/admin/add-product", color: "#f59e0b" },
+    { title: "Dashboard", icon: "📊", route: "/dashboard", color: "#ef4444" },
   ];
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>Ward Cosmetics POS</h1>
-      <p style={styles.subtitle}>Inventory & Sales System</p>
+      <h1 style={styles.title}>Ward Cosmetics</h1>
+      <p style={styles.subtitle}>Modern Inventory & POS System</p>
 
       <div style={styles.grid}>
         {cards.map((c) => (
           <div
             key={c.title}
-            style={styles.card}
+            style={{ ...styles.card, borderTop: `4px solid ${c.color}` }}
             onClick={() => router.push(c.route)}
           >
-            <div style={styles.icon}>{c.icon}</div>
-            <div style={styles.cardTitle}>{c.title}</div>
+            <div style={{ ...styles.icon, color: c.color }}>{c.icon}</div>
+            <h3>{c.title}</h3>
           </div>
         ))}
       </div>
@@ -36,40 +36,36 @@ export default function Home() {
 
 const styles: any = {
   page: {
-    paddingTop: 60,
+    padding: 10,
   },
 
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
+    fontSize: 32,
+    marginBottom: 5,
   },
 
   subtitle: {
-    color: "#94a3b8",
-    marginBottom: 30,
+    color: "#64748b",
+    marginBottom: 20,
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
     gap: 15,
   },
 
   card: {
-    background: "#111827",
+    background: "white",
+    borderRadius: 16,
     padding: 20,
-    borderRadius: 12,
     cursor: "pointer",
-    border: "1px solid #1f2937",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     transition: "0.2s",
   },
 
   icon: {
-    fontSize: 30,
+    fontSize: 28,
     marginBottom: 10,
-  },
-
-  cardTitle: {
-    fontSize: 14,
   },
 };

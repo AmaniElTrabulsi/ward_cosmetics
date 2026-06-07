@@ -1,33 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { Html5Qrcode } from "html5-qrcode";
 
-export default function RegisterPage() {
-  const [cart, setCart] = useState<any[]>([]);
+export default function Register() {
   const [barcode, setBarcode] = useState("");
-  const [scanning, setScanning] = useState(false);
+  const [cart, setCart] = useState<any[]>([]);
 
-  const scannerRef = useRef<any>(null);
-
-  /* ================= FIND PRODUCT ================= */
-  async function findProduct(code: string) {
+  async function add() {
     const { data } = await supabase
       .from("products")
       .select("*")
-      .eq("barcode", code)
+      .eq("barcode", barcode)
       .single();
 
-    if (!data) {
-      alert("Product not found");
-      return;
-    }
+    if (!data) return;
 
     setCart((prev) => {
-      const exists = prev.find((i) => i.id === data.id);
+      const found = prev.find((i) => i.id === data.id);
 
-      if (exists) {
+      if (found) {
         return prev.map((i) =>
           i.id === data.id ? { ...i, qty: i.qty + 1 } : i
         );
@@ -35,145 +27,86 @@ export default function RegisterPage() {
 
       return [...prev, { ...data, qty: 1 }];
     });
+
+    setBarcode("");
   }
 
-  /* ================= START SCANNER ================= */
-  async function startScanner() {
-  try {
-    setScanning(true);
-
-    const html5QrCode = new Html5Qrcode("reader");
-    scannerRef.current = html5QrCode;
-
-    const devices = await Html5Qrcode.getCameras();
-
-    if (!devices || devices.length === 0) {
-      alert("No camera found");
-      return;
+  async function checkout() {
+    for (const item of cart) {
+      await supabase
+        .from("products")
+        .update({
+          stock_quantity: item.stock_quantity - item.qty,
+        })
+        .eq("id", item.id);
     }
 
-    // 🔥 FIND BACK CAMERA (important fix)
-    const backCamera =
-      devices.find((d) =>
-        d.label.toLowerCase().includes("back") ||
-        d.label.toLowerCase().includes("rear") ||
-        d.label.toLowerCase().includes("environment")
-      ) || devices[devices.length - 1]; // fallback
-
-    await html5QrCode.start(
-      backCamera.id,
-      {
-        fps: 10,
-        qrbox: 250,
-        aspectRatio: 1.0,
-      },
-      (decodedText) => {
-        findProduct(decodedText);
-        stopScanner();
-      },
-      () => {}
-    );
-  } catch (err) {
-    console.log(err);
-    alert("Scanner failed to start");
-    setScanning(false);
+    setCart([]);
+    alert("Done");
   }
-}
-
-  /* ================= STOP SCANNER ================= */
-  async function stopScanner() {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-      }
-    } catch {}
-
-    setScanning(false);
-  }
-
-  /* ================= CART ================= */
-  const total = cart.reduce(
-    (sum, i) => sum + i.price * i.qty,
-    0
-  );
 
   return (
-    <div style={styles.page}>
-      <h1>🧾 Register (POS)</h1>
+    <div>
+      <h2>Register</h2>
 
-      {/* INPUT */}
       <div style={styles.row}>
         <input
           value={barcode}
           onChange={(e) => setBarcode(e.target.value)}
-          placeholder="Enter barcode"
           style={styles.input}
+          placeholder="Scan barcode"
         />
 
-        <button onClick={() => findProduct(barcode)}>
+        <button onClick={add} style={styles.btn}>
           Add
         </button>
-
-        {!scanning ? (
-          <button onClick={startScanner}>📷 Scan</button>
-        ) : (
-          <button onClick={stopScanner}>Stop</button>
-        )}
       </div>
 
-      {/* CAMERA VIEW */}
-      <div
-        id="reader"
-        style={{
-          width: "100%",
-          marginTop: 10,
-          borderRadius: 10,
-          overflow: "hidden",
-        }}
-      />
+      {cart.map((i) => (
+        <div key={i.id} style={styles.item}>
+          {i.name} x {i.qty}
+        </div>
+      ))}
 
-      {/* CART */}
-      <div style={styles.cart}>
-        {cart.map((i) => (
-          <div key={i.id} style={styles.item}>
-            <b>{i.name}</b>
-            <span>{i.qty}</span>
-          </div>
-        ))}
-      </div>
-
-      <h2>Total: ${total.toFixed(2)}</h2>
+      <button onClick={checkout} style={styles.checkout}>
+        Checkout
+      </button>
     </div>
   );
 }
 
 const styles: any = {
-  page: {
-    padding: 20,
-    background: "#0b0f19",
-    color: "white",
-    minHeight: "100vh",
-  },
-
-  row: {
-    display: "flex",
-    gap: 10,
-  },
+  row: { display: "flex", gap: 10 },
 
   input: {
     flex: 1,
-    padding: 10,
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid #ddd",
   },
 
-  cart: {
-    marginTop: 20,
-    padding: 10,
-    background: "#111827",
+  btn: {
+    padding: "12px 16px",
+    background: "#6366f1",
+    color: "white",
+    border: "none",
+    borderRadius: 10,
   },
 
   item: {
-    display: "flex",
-    justifyContent: "space-between",
+    padding: 10,
+    background: "#f1f5f9",
+    marginTop: 8,
+    borderRadius: 10,
+  },
+
+  checkout: {
+    marginTop: 15,
+    width: "100%",
+    padding: 15,
+    background: "#10b981",
+    color: "white",
+    border: "none",
+    borderRadius: 12,
   },
 };
