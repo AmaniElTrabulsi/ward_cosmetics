@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { supabase } from "@/lib/supabase";
 
@@ -9,8 +9,6 @@ export default function RegisterPage() {
   const [scannerOpen, setScannerOpen] = useState(false);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const isRunningRef = useRef(false);
-
   const readerId = "reader";
 
   /* ================= ADD PRODUCT ================= */
@@ -39,20 +37,29 @@ export default function RegisterPage() {
     });
   }
 
-  /* ================= START SCANNER (FIXED) ================= */
+  /* ================= START SCANNER (FIXED VERSION) ================= */
   async function startScanner() {
     try {
-      if (isRunningRef.current) return;
-
       setScannerOpen(true);
 
       const html5QrCode = new Html5Qrcode(readerId);
       scannerRef.current = html5QrCode;
 
-      isRunningRef.current = true;
+      const devices = await Html5Qrcode.getCameras();
+
+      if (!devices || devices.length === 0) {
+        alert("No camera found");
+        return;
+      }
+
+      // pick BACK camera (best effort)
+      const backCamera =
+        devices.find((d) =>
+          d.label.toLowerCase().includes("back")
+        ) || devices[0];
 
       await html5QrCode.start(
-        { facingMode: "environment" }, // back camera
+        backCamera.id,
         {
           fps: 10,
           qrbox: { width: 250, height: 250 },
@@ -61,31 +68,25 @@ export default function RegisterPage() {
           await stopScanner();
           addByBarcode(decodedText);
         },
-        (err) => {
-          // ignore scan errors
-        }
+        () => {}
       );
     } catch (err) {
-      console.log("Camera error:", err);
-      alert(
-        "Camera failed to open.\nCheck HTTPS + permissions + camera access."
-      );
+      console.log("Scanner error:", err);
+      alert("Camera failed to open. Try refresh or HTTPS.");
       setScannerOpen(false);
-      isRunningRef.current = false;
     }
   }
 
   /* ================= STOP SCANNER ================= */
   async function stopScanner() {
     try {
-      if (scannerRef.current && isRunningRef.current) {
+      if (scannerRef.current) {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
       }
     } catch {}
 
     scannerRef.current = null;
-    isRunningRef.current = false;
     setScannerOpen(false);
   }
 
@@ -113,12 +114,10 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <h1>🧾 Register</h1>
 
-      {/* SCAN BUTTON */}
       <button style={styles.scanBtn} onClick={startScanner}>
-        📷 Scan Barcode (Back Camera)
+        📷 Scan Barcode
       </button>
 
-      {/* CAMERA VIEW */}
       {scannerOpen && (
         <div style={styles.cameraBox}>
           <div id={readerId} style={{ width: "100%" }} />
@@ -128,7 +127,6 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* CART */}
       <div style={styles.card}>
         {cart.map((item) => (
           <div key={item.id} style={styles.row}>
@@ -148,7 +146,11 @@ export default function RegisterPage() {
 }
 
 const styles: any = {
-  page: { padding: 20, background: "#f6f7fb", minHeight: "100vh" },
+  page: {
+    padding: 20,
+    background: "#f6f7fb",
+    minHeight: "100vh",
+  },
 
   scanBtn: {
     padding: 14,
@@ -170,8 +172,8 @@ const styles: any = {
     marginTop: 10,
     padding: 10,
     background: "#ef4444",
-    color: "white",
     border: "none",
+    color: "white",
     borderRadius: 8,
   },
 
@@ -193,8 +195,8 @@ const styles: any = {
     marginTop: 10,
     padding: 15,
     background: "#10b981",
-    color: "white",
     border: "none",
     borderRadius: 12,
+    color: "white",
   },
 };
