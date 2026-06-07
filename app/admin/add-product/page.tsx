@@ -28,13 +28,12 @@ export default function AddProduct() {
       if (file) {
         const fileName = `${Date.now()}-${file.name}`;
 
-        const { error: uploadError } = await supabase.storage
+        const { error } = await supabase.storage
           .from("product-images")
           .upload(`products/${fileName}`, file);
 
-        if (uploadError) {
+        if (error) {
           alert("Image upload failed");
-          setLoading(false);
           return;
         }
 
@@ -46,7 +45,7 @@ export default function AddProduct() {
       }
 
       /* ================= INSERT PRODUCT ================= */
-      const { error } = await supabase.from("products").insert({
+      const { error: insertError } = await supabase.from("products").insert({
         name,
         brand,
         price: Number(price),
@@ -55,8 +54,7 @@ export default function AddProduct() {
         image_url: imageUrl,
       });
 
-      if (error) {
-        console.log(error);
+      if (insertError) {
         alert("Failed to save product");
         return;
       }
@@ -69,85 +67,123 @@ export default function AddProduct() {
 
   return (
     <div style={styles.page}>
-      <div style={styles.card}>
+      <div style={styles.container}>
         <h1 style={styles.title}>➕ Add Product</h1>
-        <p style={styles.subtitle}>Create a new inventory item</p>
+        <p style={styles.subtitle}>Create or add inventory item</p>
 
-        {/* INPUTS */}
-        <div style={styles.form}>
-          <input placeholder="Product Name" onChange={(e) => setName(e.target.value)} />
-          <input placeholder="Brand" onChange={(e) => setBrand(e.target.value)} />
-          <input placeholder="Price" onChange={(e) => setPrice(e.target.value)} />
-          <input placeholder="Stock" onChange={(e) => setStock(e.target.value)} />
-          <input placeholder="Barcode" onChange={(e) => setBarcode(e.target.value)} />
+        {/* FORM CARD */}
+        <div style={styles.card}>
+          <div style={styles.form}>
+            <input
+              style={styles.input}
+              placeholder="Product name"
+              onChange={(e) => setName(e.target.value)}
+            />
 
-          {/* IMAGE UPLOAD (FIXED: GALLERY + CAMERA) */}
-          <label style={styles.label}>📷 Add Product Image</label>
+            <input
+              style={styles.input}
+              placeholder="Brand"
+              onChange={(e) => setBrand(e.target.value)}
+            />
 
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (!f) return;
+            <input
+              style={styles.input}
+              placeholder="Price"
+              onChange={(e) => setPrice(e.target.value)}
+            />
 
-              setFile(f);
-              setPreview(URL.createObjectURL(f));
-            }}
-          />
+            <input
+              style={styles.input}
+              placeholder="Stock"
+              onChange={(e) => setStock(e.target.value)}
+            />
 
-          {/* PREVIEW */}
-          {preview && (
-            <img src={preview} style={styles.preview} />
-          )}
+            <input
+              style={styles.input}
+              placeholder="Barcode"
+              onChange={(e) => setBarcode(e.target.value)}
+            />
 
-          {/* SAVE BUTTON */}
-          <button onClick={save} disabled={loading} style={styles.button}>
-            {loading ? "Saving..." : "Save Product"}
-          </button>
+            {/* IMAGE UPLOAD */}
+            <label style={styles.label}>📷 Product Image</label>
+
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+
+                setFile(f);
+                setPreview(URL.createObjectURL(f));
+              }}
+            />
+
+            {preview && (
+              <img src={preview} style={styles.preview} />
+            )}
+
+            {/* SAVE */}
+            <button
+              style={styles.saveBtn}
+              onClick={save}
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save Product"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-/* ================= STYLES ================= */
+/* ================= STYLES (MATCH ENTIRE APP) ================= */
 
 const styles: any = {
   page: {
     minHeight: "100vh",
     backgroundColor: "#0f0f10",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    backgroundColor: "#1a1a1a",
-    border: "1px solid #2a2a2a",
-    borderRadius: 16,
     padding: 20,
     color: "white",
   },
 
+  container: {
+    maxWidth: 800,
+    margin: "0 auto",
+  },
+
   title: {
-    margin: 0,
-    fontSize: 22,
+    fontSize: 24,
+    marginBottom: 5,
   },
 
   subtitle: {
-    fontSize: 13,
     color: "#888",
-    marginBottom: 15,
+    marginBottom: 20,
+    fontSize: 13,
+  },
+
+  card: {
+    backgroundColor: "#1a1a1a",
+    border: "1px solid #2a2a2a",
+    borderRadius: 12,
+    padding: 20,
   },
 
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: 10,
+    gap: 12,
+  },
+
+  input: {
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid #333",
+    backgroundColor: "#111",
+    color: "white",
+    outline: "none",
   },
 
   label: {
@@ -162,13 +198,13 @@ const styles: any = {
     marginTop: 10,
   },
 
-  button: {
+  saveBtn: {
     marginTop: 10,
-    padding: 12,
+    padding: 14,
     borderRadius: 10,
-    border: "none",
     backgroundColor: "#4ade80",
-    color: "#000",
+    border: "none",
+    color: "black",
     fontWeight: "bold",
     cursor: "pointer",
   },
