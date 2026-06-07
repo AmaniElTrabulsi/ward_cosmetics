@@ -19,6 +19,12 @@ export default function Home() {
       route: "/scan",
     },
     {
+      title: "Add Product",
+      subtitle: "Create new item in stock",
+      emoji: "➕",
+      route: "/admin/add-product",
+    },
+    {
       title: "Register (Kasse)",
       subtitle: "Checkout & sales",
       emoji: "🧾",
