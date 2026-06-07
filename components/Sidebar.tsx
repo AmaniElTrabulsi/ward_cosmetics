@@ -7,72 +7,47 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
-  const items = [
-    { label: "Home", route: "/" },
-    { label: "Search", route: "/search" },
-    { label: "Register", route: "/register" },
-    { label: "Add Product", route: "/admin/add-product" },
-    { label: "Dashboard", route: "/dashboard" },
-  ];
+  const go = (path: string) => {
+    router.push(path);
+    setOpen(false);
+  };
 
   return (
     <>
-      {/* TOP BAR */}
-      <div style={styles.topBar}>
-        <button onClick={() => setOpen(!open)} style={styles.burger}>
-          ☰
-        </button>
-
-        <h3 style={styles.logo}>Ward POS</h3>
-      </div>
+      {/* BURGER BUTTON */}
+      <button style={styles.burger} onClick={() => setOpen(!open)}>
+        ☰
+      </button>
 
       {/* OVERLAY */}
       {open && <div style={styles.overlay} onClick={() => setOpen(false)} />}
 
       {/* SIDEBAR */}
       <div style={{ ...styles.sidebar, left: open ? 0 : -260 }}>
-        {items.map((i) => (
-          <div
-            key={i.route}
-            style={styles.item}
-            onClick={() => {
-              router.push(i.route);
-              setOpen(false);
-            }}
-          >
-            {i.label}
-          </div>
-        ))}
+        <h3 style={{ marginBottom: 20 }}>Menu</h3>
+
+        <button style={styles.link} onClick={() => go("/")}>Home</button>
+        <button style={styles.link} onClick={() => go("/search")}>Search</button>
+        <button style={styles.link} onClick={() => go("/register")}>Register</button>
+        <button style={styles.link} onClick={() => go("/admin/add-product")}>
+          Add Product
+        </button>
       </div>
     </>
   );
 }
 
 const styles: any = {
-  topBar: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 55,
-    background: "white",
-    display: "flex",
-    alignItems: "center",
-    padding: "0 15px",
-    boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
-    zIndex: 1000,
-  },
-
   burger: {
+    position: "fixed",
+    top: 15,
+    left: 15,
     fontSize: 22,
-    background: "none",
-    border: "none",
-    cursor: "pointer",
-  },
-
-  logo: {
-    marginLeft: 10,
-    fontWeight: "bold",
+    background: "white",
+    border: "1px solid #ddd",
+    borderRadius: 10,
+    padding: "6px 10px",
+    zIndex: 1001,
   },
 
   overlay: {
@@ -82,25 +57,30 @@ const styles: any = {
     right: 0,
     bottom: 0,
     background: "rgba(0,0,0,0.3)",
-    zIndex: 999,
+    zIndex: 1000,
   },
 
   sidebar: {
     position: "fixed",
     top: 0,
-    left: -260,
+    left: 0,
     width: 260,
     height: "100vh",
-    background: "#111827",
-    color: "white",
-    paddingTop: 70,
-    transition: "0.3s",
-    zIndex: 1001,
+    background: "white",
+    boxShadow: "2px 0 10px rgba(0,0,0,0.1)",
+    padding: 20,
+    transition: "0.25s",
+    zIndex: 1002,
   },
 
-  item: {
-    padding: 15,
-    cursor: "pointer",
-    borderBottom: "1px solid #1f2937",
+  link: {
+    display: "block",
+    width: "100%",
+    padding: 12,
+    marginBottom: 10,
+    border: "none",
+    background: "#f3f4f6",
+    borderRadius: 10,
+    textAlign: "left",
   },
 };

@@ -12,7 +12,6 @@ export default function AddProduct() {
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   const [barcode, setBarcode] = useState("");
-
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
 
@@ -56,20 +55,27 @@ export default function AddProduct() {
         <input placeholder="Stock" onChange={(e) => setStock(e.target.value)} />
         <input placeholder="Barcode" onChange={(e) => setBarcode(e.target.value)} />
 
+        {/* CAMERA + GALLERY FIX */}
         <input
           type="file"
           accept="image/*"
+        />
+
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
           onChange={(e) => {
             const f = e.target.files?.[0];
-            if (!f) return;
-
-            setFile(f);
-            setPreview(URL.createObjectURL(f));
+            if (f) {
+              setFile(f);
+              setPreview(URL.createObjectURL(f));
+            }
           }}
         />
 
         {preview && (
-          <img src={preview} style={styles.img} />
+          <img src={preview} style={{ width: "100%", marginTop: 10 }} />
         )}
 
         <button onClick={save} style={styles.btn}>
@@ -82,26 +88,17 @@ export default function AddProduct() {
 
 const styles: any = {
   page: {
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0f0f10, #151a2d)",
-    display: "flex",
-    justifyContent: "center",
     padding: 20,
-    color: "white",
+    background: "#f6f7fb",
+    minHeight: "100vh",
   },
 
   card: {
-    width: 420,
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    background: "white",
     padding: 20,
-    borderRadius: 14,
-  },
-
-  img: {
-    width: "100%",
-    marginTop: 10,
-    borderRadius: 10,
+    borderRadius: 16,
+    maxWidth: 400,
+    margin: "auto",
   },
 
   btn: {
@@ -109,8 +106,8 @@ const styles: any = {
     width: "100%",
     padding: 12,
     background: "#6366f1",
-    border: "none",
     color: "white",
-    borderRadius: 10,
+    border: "none",
+    borderRadius: 12,
   },
 };
