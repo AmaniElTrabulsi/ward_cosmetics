@@ -45,7 +45,7 @@ const styles: any = {
   },
 
   subtitle: {
-    color: "#64748b",
+    color: "#0b0b0b",
     marginBottom: 20,
   },
 

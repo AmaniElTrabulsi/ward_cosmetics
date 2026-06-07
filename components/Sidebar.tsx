@@ -24,7 +24,7 @@ export default function Sidebar() {
 
       {/* SIDEBAR */}
       <div style={{ ...styles.sidebar, left: open ? 0 : -260 }}>
-        <h3 style={{ marginBottom: 20 }}>Menu</h3>
+        <h3 style={{ marginBottom: 20, color: "black" }}>Menu</h3>
 
         <button style={styles.link} onClick={() => go("/")}>Home</button>
         <button style={styles.link} onClick={() => go("/search")}>Search</button>
@@ -44,10 +44,11 @@ const styles: any = {
     left: 15,
     fontSize: 22,
     background: "white",
-    border: "1px solid #ddd",
+    border: "1px solid #080808",
     borderRadius: 10,
     padding: "6px 10px",
     zIndex: 1001,
+    color:"black",
   },
 
   overlay: {
@@ -67,7 +68,7 @@ const styles: any = {
     width: 260,
     height: "100vh",
     background: "white",
-    boxShadow: "2px 0 10px rgba(0,0,0,0.1)",
+    boxShadow: "2px 0 10px rgba(11, 10, 10, 0.77)",
     padding: 20,
     transition: "0.25s",
     zIndex: 1002,
@@ -79,8 +80,9 @@ const styles: any = {
     padding: 12,
     marginBottom: 10,
     border: "none",
-    background: "#f3f4f6",
+    background: "#a5a5ad",
     borderRadius: 10,
     textAlign: "left",
+    color: "black",
   },
 };

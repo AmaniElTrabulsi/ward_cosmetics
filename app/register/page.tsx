@@ -7,12 +7,17 @@ import { supabase } from "@/lib/supabase";
 export default function RegisterPage() {
   const [cart, setCart] = useState<any[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [manualCode, setManualCode] = useState("");
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const readerId = "reader";
 
   /* ================= ADD PRODUCT ================= */
   async function addByBarcode(code: string) {
+    if (!code) return;
+
     const { data } = await supabase
       .from("products")
       .select("*")
@@ -42,65 +47,56 @@ export default function RegisterPage() {
     setScannerOpen(true);
   }
 
-  /* ================= INIT CAMERA AFTER RENDER ================= */
+  /* ================= CAMERA INIT ================= */
   useEffect(() => {
     if (!scannerOpen) return;
 
-    let html5QrCode: Html5Qrcode;
+    let qr: Html5Qrcode;
 
-    const initCamera = async () => {
+    const start = async () => {
       try {
-        html5QrCode = new Html5Qrcode(readerId);
-        scannerRef.current = html5QrCode;
+        qr = new Html5Qrcode(readerId);
+        scannerRef.current = qr;
 
         const cameras = await Html5Qrcode.getCameras();
 
-        if (!cameras || cameras.length === 0) {
+        if (!cameras.length) {
           alert("No camera found");
           return;
         }
 
-        const backCamera =
+        // prefer back camera
+        const back =
           cameras.find((c) =>
             c.label.toLowerCase().includes("back")
           ) || cameras[0];
 
-        await html5QrCode.start(
-          backCamera.id,
+        await qr.start(
+          back.id,
           {
             fps: 10,
             qrbox: { width: 250, height: 250 },
           },
-          async (decodedText) => {
-            await stopScanner();
-            addByBarcode(decodedText);
+          async (text) => {
+            await qr.stop();
+            setScannerOpen(false);
+            addByBarcode(text);
           },
-          () => {} // ✅ FIX: required 4th argument
+          () => {}
         );
-      } catch (err) {
-        console.log("Camera error:", err);
+      } catch (e) {
+        console.log(e);
         alert("Camera failed to open");
         setScannerOpen(false);
       }
     };
 
-    const timer = setTimeout(initCamera, 300);
+    setTimeout(start, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      qr?.stop().catch(() => {});
+    };
   }, [scannerOpen]);
-
-  /* ================= STOP SCANNER ================= */
-  async function stopScanner() {
-    try {
-      if (scannerRef.current) {
-        await scannerRef.current.stop();
-        await scannerRef.current.clear();
-      }
-    } catch {}
-
-    scannerRef.current = null;
-    setScannerOpen(false);
-  }
 
   /* ================= CHECKOUT ================= */
   async function checkout() {
@@ -121,18 +117,48 @@ export default function RegisterPage() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>🧾 Register (POS)</h1>
+      <h1 style={styles.title}>🧾 Register</h1>
 
-      {/* SCAN BUTTON */}
-      <button style={styles.scanBtn} onClick={startScanner}>
-        📷 Scan Barcode
-      </button>
+      {/* MANUAL INPUT (AUTOFOCUS FIX) */}
+      <div style={styles.inputBox}>
+        <input
+          ref={inputRef}
+          autoFocus
+          placeholder="Scan or type barcode"
+          value={manualCode}
+          onChange={(e) => setManualCode(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              addByBarcode(manualCode);
+              setManualCode("");
+            }
+          }}
+          style={styles.input}
+        />
 
-      {/* CAMERA */}
+        <button
+          style={styles.scanBtn}
+          onClick={() => {
+            addByBarcode(manualCode);
+            setManualCode("");
+          }}
+        >
+          Add
+        </button>
+
+        <button style={styles.cameraBtn} onClick={startScanner}>
+          📷 Scan
+        </button>
+      </div>
+
+      {/* CAMERA MODAL */}
       {scannerOpen && (
-        <div style={styles.cameraBox}>
-          <div id={readerId} style={{ width: "100%" }} />
-          <button onClick={stopScanner} style={styles.closeBtn}>
+        <div style={styles.modal}>
+          <div id={readerId} style={styles.camera} />
+          <button
+            style={styles.closeBtn}
+            onClick={() => setScannerOpen(false)}
+          >
             Close Camera
           </button>
         </div>
@@ -140,72 +166,86 @@ export default function RegisterPage() {
 
       {/* CART */}
       <div style={styles.card}>
-        {cart.length === 0 && (
-          <p style={{ color: "#888" }}>No items yet</p>
+        {cart.length === 0 ? (
+          <p style={{ color: "#666" }}>Cart is empty</p>
+        ) : (
+          cart.map((i) => (
+            <div key={i.id} style={styles.row}>
+              <b>{i.name}</b>
+              <span>× {i.qty}</span>
+            </div>
+          ))
         )}
-
-        {cart.map((item) => (
-          <div key={item.id} style={styles.row}>
-            <b>{item.name}</b>
-            <span>× {item.qty}</span>
-          </div>
-        ))}
       </div>
 
-      {/* TOTAL */}
       <h2>Total: ${total.toFixed(2)}</h2>
 
-      <button onClick={checkout} style={styles.payBtn}>
+      <button style={styles.payBtn} onClick={checkout}>
         Checkout
       </button>
     </div>
   );
 }
 
-/* ================= STYLES ================= */
-
 const styles: any = {
-  page: {
-    padding: 20,
-    background: "#f6f7fb",
-    minHeight: "100vh",
-    fontFamily: "Arial",
-  },
+  page: { padding: 20 },
 
-  title: {
+  title: { marginBottom: 15 },
+
+  inputBox: {
+    display: "flex",
+    gap: 8,
     marginBottom: 15,
   },
 
-  scanBtn: {
-    padding: 14,
-    background: "#06b6d4",
-    border: "none",
-    borderRadius: 12,
-    color: "white",
-    marginBottom: 10,
+  input: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 10,
+    border: "1px solid #ddd",
   },
 
-  cameraBox: {
+  scanBtn: {
+    background: "#6366f1",
+    color: "white",
+    border: "none",
+    padding: 12,
+    borderRadius: 10,
+  },
+
+  cameraBtn: {
+    background: "#06b6d4",
+    color: "white",
+    border: "none",
+    padding: 12,
+    borderRadius: 10,
+  },
+
+  modal: {
     background: "white",
     padding: 10,
     borderRadius: 12,
     marginBottom: 10,
   },
 
+  camera: {
+    width: "100%",
+  },
+
   closeBtn: {
     marginTop: 10,
+    width: "100%",
     padding: 10,
     background: "#ef4444",
     border: "none",
     color: "white",
-    borderRadius: 8,
+    borderRadius: 10,
   },
 
   card: {
     background: "white",
     padding: 15,
     borderRadius: 12,
-    marginTop: 10,
   },
 
   row: {
@@ -216,13 +256,12 @@ const styles: any = {
   },
 
   payBtn: {
-    width: "100%",
     marginTop: 15,
+    width: "100%",
     padding: 15,
     background: "#10b981",
     border: "none",
     borderRadius: 12,
     color: "white",
-    fontWeight: "bold",
   },
 };
