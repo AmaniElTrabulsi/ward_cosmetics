@@ -28,6 +28,7 @@ export default function Sidebar() {
 
         <button style={styles.link} onClick={() => go("/")}>Home</button>
         <button style={styles.link} onClick={() => go("/search")}>Search</button>
+        <button style={styles.link} onClick={() => go("/scan")}>Scan</button>
         <button style={styles.link} onClick={() => go("/register")}>Register</button>
         <button style={styles.link} onClick={() => go("/admin/add-product")}>
           Add Product
