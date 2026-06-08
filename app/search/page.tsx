@@ -246,9 +246,10 @@ const styles: any = {
     marginBottom: 15,
   },
 
+  /* ✅ FIXED: always 2 items per row on phone */
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gridTemplateColumns: "repeat(2, 1fr)",
     gap: 12,
   },
 
