@@ -33,11 +33,10 @@ export default function ScanPage() {
     setProduct(data);
   }
 
-  // START / STOP SCANNER SAFELY
+  // SCANNER
   useEffect(() => {
     if (!scannerStarted) return;
 
-    // prevent double scanner
     if (scannerRef.current) return;
 
     const scanner = new Html5QrcodeScanner(
@@ -55,7 +54,6 @@ export default function ScanPage() {
       setBarcode(decodedText);
       await fetchProduct(decodedText);
 
-      // stop scanner after successful scan
       try {
         await scanner.clear();
       } catch {}
@@ -64,7 +62,13 @@ export default function ScanPage() {
       setScannerStarted(false);
     };
 
-    scanner.render(onScanSuccess);
+    const onScanFailure = (error: any) => {
+      // optional: ignore or log
+      console.log(error);
+    };
+
+    // ✅ FIXED: 2 arguments required
+    scanner.render(onScanSuccess, onScanFailure);
 
     return () => {
       try {
