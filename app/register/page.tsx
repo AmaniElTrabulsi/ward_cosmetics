@@ -11,6 +11,13 @@ export default function RegisterPage() {
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
+  /* ================= VIBRATION ONLY ================= */
+  function successFeedback() {
+    if (navigator.vibrate) {
+      navigator.vibrate(120);
+    }
+  }
+
   /* ================= FIND PRODUCT ================= */
   async function addByBarcode(code: string) {
     const cleanCode = code.trim();
@@ -31,9 +38,7 @@ export default function RegisterPage() {
 
       if (existing) {
         return prev.map((i) =>
-          i.id === data.id
-            ? { ...i, qty: i.qty + 1 }
-            : i
+          i.id === data.id ? { ...i, qty: i.qty + 1 } : i
         );
       }
 
@@ -53,15 +58,17 @@ export default function RegisterPage() {
         scannerRef.current = html5QrCode;
 
         const cameras = await Html5Qrcode.getCameras();
+
         if (!cameras?.length) {
           alert("No camera found");
           return;
         }
 
         const backCamera =
-          cameras.find((c) =>
-            c.label.toLowerCase().includes("back") ||
-            c.label.toLowerCase().includes("rear")
+          cameras.find(
+            (c) =>
+              c.label.toLowerCase().includes("back") ||
+              c.label.toLowerCase().includes("rear")
           ) || cameras[0];
 
         await html5QrCode.start(
@@ -69,9 +76,14 @@ export default function RegisterPage() {
           { fps: 10, qrbox: 250 },
           async (decodedText) => {
             await stopScanner();
+
             const scanned = decodedText.trim();
             setBarcode(scanned);
+
             await addByBarcode(scanned);
+
+            // ✅ vibration only
+            successFeedback();
           },
           () => {}
         );
@@ -95,11 +107,10 @@ export default function RegisterPage() {
     setScannerOpen(false);
   }
 
-  /* ================= CHECKOUT (NO NEGATIVE STOCK) ================= */
+  /* ================= CHECKOUT ================= */
   async function checkout() {
     if (cart.length === 0) return;
 
-    // 1. CHECK STOCK FIRST
     for (const item of cart) {
       if ((item.stock_quantity || 0) < item.qty) {
         alert(
@@ -109,7 +120,6 @@ export default function RegisterPage() {
       }
     }
 
-    // 2. UPDATE STOCK
     for (const item of cart) {
       await supabase
         .from("products")
@@ -132,7 +142,6 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <h1 style={styles.title}>🧾 Register (POS)</h1>
 
-      {/* MANUAL BARCODE */}
       <div style={styles.inputRow}>
         <input
           value={barcode}
@@ -149,12 +158,10 @@ export default function RegisterPage() {
         </button>
       </div>
 
-      {/* SCAN */}
       <button style={styles.scanBtn} onClick={startScanner}>
         📷 Scan Barcode
       </button>
 
-      {/* CAMERA */}
       {scannerOpen && (
         <div style={styles.cameraBox}>
           <div id="reader" />
@@ -164,7 +171,6 @@ export default function RegisterPage() {
         </div>
       )}
 
-      {/* CART */}
       <div style={styles.card}>
         {cart.length === 0 && (
           <p style={{ color: "#777" }}>No items yet</p>
@@ -186,10 +192,7 @@ export default function RegisterPage() {
                   setCart((prev) =>
                     prev.map((i) =>
                       i.id === item.id
-                        ? {
-                            ...i,
-                            qty: Math.max(1, i.qty - 1),
-                          }
+                        ? { ...i, qty: Math.max(1, i.qty - 1) }
                         : i
                     )
                   )
@@ -219,7 +222,6 @@ export default function RegisterPage() {
         ))}
       </div>
 
-      {/* TOTAL */}
       <h2 style={{ color: "#111827" }}>
         Total: ${total.toFixed(2)}
       </h2>
@@ -237,18 +239,15 @@ const styles: any = {
     background: "#f6f7fb",
     minHeight: "100vh",
   },
-
   title: {
     color: "#111827",
     marginBottom: 20,
   },
-
   inputRow: {
     display: "flex",
     gap: 10,
     marginBottom: 10,
   },
-
   input: {
     flex: 1,
     padding: 12,
@@ -257,7 +256,6 @@ const styles: any = {
     color: "#111827",
     background: "white",
   },
-
   addBtn: {
     padding: "12px 18px",
     background: "#6366f1",
@@ -265,7 +263,6 @@ const styles: any = {
     border: "none",
     borderRadius: 12,
   },
-
   scanBtn: {
     width: "100%",
     padding: 14,
@@ -275,14 +272,12 @@ const styles: any = {
     borderRadius: 12,
     marginBottom: 15,
   },
-
   cameraBox: {
     background: "white",
     padding: 12,
     borderRadius: 12,
     marginBottom: 15,
   },
-
   closeBtn: {
     marginTop: 10,
     width: "100%",
@@ -292,13 +287,11 @@ const styles: any = {
     border: "none",
     borderRadius: 12,
   },
-
   card: {
     background: "white",
     borderRadius: 12,
     padding: 15,
   },
-
   row: {
     display: "flex",
     justifyContent: "space-between",
@@ -306,7 +299,6 @@ const styles: any = {
     borderBottom: "1px solid #eee",
     color: "#111827",
   },
-
   payBtn: {
     width: "100%",
     padding: 15,
@@ -317,13 +309,11 @@ const styles: any = {
     borderRadius: 12,
     fontWeight: "bold",
   },
-
   qtyControls: {
     display: "flex",
     alignItems: "center",
     gap: 10,
   },
-
   qtyBtn: {
     width: 32,
     height: 32,
