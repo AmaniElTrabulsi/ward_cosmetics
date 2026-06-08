@@ -117,9 +117,21 @@ export default function SearchPage() {
 
             <p style={styles.text}>Brand: {p.brand}</p>
             <p style={styles.text}>Price: ${p.price}</p>
-            <p style={styles.text}>
-              Stock: {p.stock_quantity}
-            </p>
+            <p
+  style={{
+    display: "inline-block",
+    padding: "2px 8px",
+    borderRadius: 6,
+    fontSize: 12,
+    background:
+      p.stock_quantity <= 3 ? "#fee2e2" : "#f3f4f6",
+    color:
+      p.stock_quantity <= 3 ? "#b91c1c" : "#111827",
+    fontWeight: 600,
+  }}
+>
+  Stock: {p.stock_quantity}
+</p>
 
             {p.barcode && (
               <p style={styles.barcode}>
