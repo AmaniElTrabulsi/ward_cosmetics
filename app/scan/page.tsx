@@ -1,29 +1,37 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Html5QrcodeScanner } from "html5-qrcode";
+import { Html5Qrcode } from "html5-qrcode";
 import { supabase } from "@/lib/supabase";
 
 export default function ScanPage() {
   const [barcode, setBarcode] = useState("");
   const [product, setProduct] = useState<any>(null);
   const [error, setError] = useState("");
-  const [scannerStarted, setScannerStarted] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
-  const scannerRef = useRef<any>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  // FETCH PRODUCT
+  /* ================= VIBRATION ================= */
+  function successFeedback() {
+    if (navigator.vibrate) {
+      navigator.vibrate(120);
+    }
+  }
+
+  /* ================= FETCH PRODUCT ================= */
   async function fetchProduct(code: string) {
     setError("");
     setProduct(null);
 
-    if (!code) return;
+    const cleanCode = code.trim();
+    if (!cleanCode) return;
 
     const { data, error } = await supabase
       .from("products")
       .select("*")
-      .eq("barcode", code)
-      .single();
+      .eq("barcode", cleanCode)
+      .maybeSingle();
 
     if (error || !data) {
       setError("❌ Product not found");
@@ -33,82 +41,89 @@ export default function ScanPage() {
     setProduct(data);
   }
 
-  // SCANNER
-  useEffect(() => {
-    if (!scannerStarted) return;
+  /* ================= START SCANNER ================= */
+  async function startScanner() {
+    setScannerOpen(true);
 
-    if (scannerRef.current) return;
-
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      {
-        fps: 10,
-        qrbox: 250,
-      },
-      false
-    );
-
-    scannerRef.current = scanner;
-
-    const onScanSuccess = async (decodedText: string) => {
-      setBarcode(decodedText);
-      await fetchProduct(decodedText);
-
+    setTimeout(async () => {
       try {
-        await scanner.clear();
-      } catch {}
+        const html5QrCode = new Html5Qrcode("reader");
+        scannerRef.current = html5QrCode;
 
-      scannerRef.current = null;
-      setScannerStarted(false);
-    };
+        const cameras = await Html5Qrcode.getCameras();
 
-    const onScanFailure = (error: any) => {
-      // optional: ignore or log
-      console.log(error);
-    };
+        if (!cameras?.length) {
+          alert("No camera found");
+          return;
+        }
 
-    // ✅ FIXED: 2 arguments required
-    scanner.render(onScanSuccess, onScanFailure);
+        const backCamera =
+          cameras.find(
+            (c) =>
+              c.label.toLowerCase().includes("back") ||
+              c.label.toLowerCase().includes("rear")
+          ) || cameras[0];
 
-    return () => {
-      try {
-        scanner.clear().catch(() => {});
-      } catch {}
+        await html5QrCode.start(
+          backCamera.id,
+          {
+            fps: 10,
+            qrbox: 250,
+          },
+          async (decodedText) => {
+            const scanned = decodedText.trim();
 
-      scannerRef.current = null;
-    };
-  }, [scannerStarted]);
+            setBarcode(scanned);
+            await fetchProduct(scanned);
 
+            successFeedback();
+
+            await stopScanner();
+          },
+          () => {}
+        );
+      } catch (err) {
+        console.log(err);
+        alert("Camera failed to open");
+        setScannerOpen(false);
+      }
+    }, 300);
+  }
+
+  /* ================= STOP SCANNER ================= */
+  async function stopScanner() {
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      }
+    } catch {}
+
+    scannerRef.current = null;
+    setScannerOpen(false);
+  }
+
+  /* ================= UI ================= */
   return (
     <div style={styles.page}>
       <h2 style={styles.title}>📷 Scan / Search Product</h2>
 
       {/* BUTTONS */}
       <div style={styles.buttons}>
-        <button
-          style={styles.btnPrimary}
-          onClick={() => setScannerStarted(true)}
-        >
+        <button style={styles.btnPrimary} onClick={startScanner}>
           Start Camera Scan
         </button>
 
-        <button
-          style={styles.btnSecondary}
-          onClick={() => {
-            setScannerStarted(false);
-            try {
-              scannerRef.current?.clear?.();
-            } catch {}
-            scannerRef.current = null;
-          }}
-        >
+        <button style={styles.btnSecondary} onClick={stopScanner}>
           Stop Camera
         </button>
       </div>
 
       {/* CAMERA */}
-      {scannerStarted && (
-        <div id="reader" style={styles.scanner}></div>
+      {scannerOpen && (
+        <div style={styles.cameraBox}>
+          <div id="reader" />
+        </div>
       )}
 
       {/* MANUAL INPUT */}
@@ -131,7 +146,7 @@ export default function ScanPage() {
       {/* ERROR */}
       {error && <p style={styles.error}>{error}</p>}
 
-      {/* PRODUCT */}
+      {/* PRODUCT CARD */}
       {product && (
         <div style={styles.card}>
           {product.image_url && (
@@ -169,6 +184,7 @@ export default function ScanPage() {
   );
 }
 
+/* ================= STYLES ================= */
 const styles: any = {
   page: {
     padding: 20,
@@ -207,10 +223,11 @@ const styles: any = {
     cursor: "pointer",
   },
 
-  scanner: {
-    width: "100%",
-    maxWidth: 400,
-    marginBottom: 20,
+  cameraBox: {
+    background: "white",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 15,
   },
 
   manualBox: {
@@ -244,7 +261,6 @@ const styles: any = {
     display: "flex",
     flexDirection: "column",
     gap: 6,
-    marginTop: 10,
   },
 
   image: {
