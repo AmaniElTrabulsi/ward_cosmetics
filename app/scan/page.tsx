@@ -288,7 +288,7 @@ const styles: any = {
 
   titleText: {
     color: "black",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "bold",
   },
 };
