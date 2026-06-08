@@ -144,29 +144,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ================= BEST SELLERS ================= */}
-      <h2 style={styles.section}>🥇 Best Selling</h2>
-
-      <div style={styles.grid}>
-        {bestSelling.slice(0, 5).map((p) => (
-          <div key={p.id} style={styles.card}>
-            <h3 style={{ color: "black" }}>{p.name}</h3>
-            <p>Sold: {p.qtySold}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= TOP REVENUE ================= */}
-      <h2 style={styles.section}>💰 Top Revenue</h2>
-
-      <div style={styles.grid}>
-        {topRevenue.slice(0, 5).map((p) => (
-          <div key={p.id} style={styles.card}>
-            <h3 style={{ color: "black" }}>{p.name}</h3>
-            <p>${p.revenue.toFixed(2)}</p>
-          </div>
-        ))}
-      </div>
+     
 
       {/* ================= LOW STOCK ================= */}
       <h2 style={styles.section}>⚠️ Low Stock</h2>
