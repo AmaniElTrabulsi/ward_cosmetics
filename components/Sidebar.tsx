@@ -32,6 +32,7 @@ export default function Sidebar() {
         <button style={styles.link} onClick={() => go("/admin/add-product")}>
           Add Product
         </button>
+        <button style={styles.link} onClick={() => go("/dashboard")}>Dashboard</button>
       </div>
     </>
   );

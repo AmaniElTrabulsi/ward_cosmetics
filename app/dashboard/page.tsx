@@ -175,7 +175,7 @@ export default function DashboardPage() {
         {lowStock.map((p) => (
           <div key={p.id} style={styles.alertCard}>
             <h3 style={{ color: "black" }}>{p.name}</h3>
-            <p>Stock: {p.stock_quantity}</p>
+            <p style={{ color: "black" }}>Stock: {p.stock_quantity}</p>
           </div>
         ))}
       </div>
