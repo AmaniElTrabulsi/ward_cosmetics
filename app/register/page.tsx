@@ -11,16 +11,14 @@ export default function RegisterPage() {
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  /* ================= VIBRATION ONLY ================= */
   function successFeedback() {
-    if (navigator.vibrate) {
-      navigator.vibrate(120);
-    }
+    if (navigator.vibrate) navigator.vibrate(120);
   }
 
-  /* ================= FIND PRODUCT ================= */
+  /* ================= ADD PRODUCT ================= */
   async function addByBarcode(code: string) {
     const cleanCode = code.trim();
+    if (!cleanCode) return;
 
     const { data, error } = await supabase
       .from("products")
@@ -48,7 +46,7 @@ export default function RegisterPage() {
     setBarcode("");
   }
 
-  /* ================= CAMERA ================= */
+  /* ================= SCANNER ================= */
   async function startScanner() {
     setScannerOpen(true);
 
@@ -58,17 +56,15 @@ export default function RegisterPage() {
         scannerRef.current = html5QrCode;
 
         const cameras = await Html5Qrcode.getCameras();
-
         if (!cameras?.length) {
           alert("No camera found");
           return;
         }
 
         const backCamera =
-          cameras.find(
-            (c) =>
-              c.label.toLowerCase().includes("back") ||
-              c.label.toLowerCase().includes("rear")
+          cameras.find((c) =>
+            c.label.toLowerCase().includes("back") ||
+            c.label.toLowerCase().includes("rear")
           ) || cameras[0];
 
         await html5QrCode.start(
@@ -79,10 +75,8 @@ export default function RegisterPage() {
 
             const scanned = decodedText.trim();
             setBarcode(scanned);
-
             await addByBarcode(scanned);
 
-            // ✅ vibration only
             successFeedback();
           },
           () => {}
@@ -107,26 +101,67 @@ export default function RegisterPage() {
     setScannerOpen(false);
   }
 
-  /* ================= CHECKOUT ================= */
+  /* ================= CHECKOUT (FIXED) ================= */
   async function checkout() {
     if (cart.length === 0) return;
 
+    // check stock
     for (const item of cart) {
       if ((item.stock_quantity || 0) < item.qty) {
-        alert(
-          `Not enough stock for ${item.name}\nAvailable: ${item.stock_quantity}`
-        );
+        alert(`Not enough stock for ${item.name}`);
         return;
       }
     }
 
+    const total = cart.reduce(
+      (sum, item) => sum + item.price * item.qty,
+      0
+    );
+
+    // create sale
+    const { data: sale, error: saleError } = await supabase
+      .from("sales")
+      .insert({ total })
+      .select()
+      .single();
+
+    if (saleError || !sale) {
+      alert("Failed to create sale");
+      console.log(saleError);
+      return;
+    }
+
+    // create sale items
+    const saleItems = cart.map((item) => ({
+      sale_id: sale.id,
+      product_id: item.id,
+      quantity: item.qty,
+      price: item.price,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from("sale_items")
+      .insert(saleItems);
+
+    if (itemsError) {
+      alert("Failed to create sale items");
+      console.log(itemsError);
+      return;
+    }
+
+    // update stock
     for (const item of cart) {
-      await supabase
+      const newStock = item.stock_quantity - item.qty;
+
+      const { error } = await supabase
         .from("products")
-        .update({
-          stock_quantity: item.stock_quantity - item.qty,
-        })
+        .update({ stock_quantity: newStock })
         .eq("id", item.id);
+
+      if (error) {
+        alert(`Stock update failed for ${item.name}`);
+        return;
+      }
     }
 
     setCart([]);
@@ -142,6 +177,7 @@ export default function RegisterPage() {
     <div style={styles.page}>
       <h1 style={styles.title}>🧾 Register (POS)</h1>
 
+      {/* INPUT */}
       <div style={styles.inputRow}>
         <input
           value={barcode}
@@ -158,6 +194,7 @@ export default function RegisterPage() {
         </button>
       </div>
 
+      {/* SCAN */}
       <button style={styles.scanBtn} onClick={startScanner}>
         📷 Scan Barcode
       </button>
@@ -171,6 +208,7 @@ export default function RegisterPage() {
         </div>
       )}
 
+      {/* CART */}
       <div style={styles.card}>
         {cart.length === 0 && (
           <p style={{ color: "#777" }}>No items yet</p>
@@ -222,10 +260,12 @@ export default function RegisterPage() {
         ))}
       </div>
 
-      <h2 style={{ color: "#111827" }}>
+      {/* TOTAL */}
+      <h2 style={styles.total}>
         Total: ${total.toFixed(2)}
       </h2>
 
+      {/* CHECKOUT */}
       <button style={styles.payBtn} onClick={checkout}>
         Checkout
       </button>
@@ -233,21 +273,25 @@ export default function RegisterPage() {
   );
 }
 
+/* ================= STYLES ================= */
 const styles: any = {
   page: {
     padding: 20,
     background: "#f6f7fb",
     minHeight: "100vh",
   },
+
   title: {
     color: "#111827",
     marginBottom: 20,
   },
+
   inputRow: {
     display: "flex",
     gap: 10,
     marginBottom: 10,
   },
+
   input: {
     flex: 1,
     padding: 12,
@@ -256,6 +300,7 @@ const styles: any = {
     color: "#111827",
     background: "white",
   },
+
   addBtn: {
     padding: "12px 18px",
     background: "#6366f1",
@@ -263,6 +308,7 @@ const styles: any = {
     border: "none",
     borderRadius: 12,
   },
+
   scanBtn: {
     width: "100%",
     padding: 14,
@@ -272,12 +318,14 @@ const styles: any = {
     borderRadius: 12,
     marginBottom: 15,
   },
+
   cameraBox: {
     background: "white",
     padding: 12,
     borderRadius: 12,
     marginBottom: 15,
   },
+
   closeBtn: {
     marginTop: 10,
     width: "100%",
@@ -287,11 +335,13 @@ const styles: any = {
     border: "none",
     borderRadius: 12,
   },
+
   card: {
     background: "white",
     borderRadius: 12,
     padding: 15,
   },
+
   row: {
     display: "flex",
     justifyContent: "space-between",
@@ -299,21 +349,13 @@ const styles: any = {
     borderBottom: "1px solid #eee",
     color: "#111827",
   },
-  payBtn: {
-    width: "100%",
-    padding: 15,
-    marginTop: 15,
-    background: "#10b981",
-    color: "white",
-    border: "none",
-    borderRadius: 12,
-    fontWeight: "bold",
-  },
+
   qtyControls: {
     display: "flex",
     alignItems: "center",
     gap: 10,
   },
+
   qtyBtn: {
     width: 32,
     height: 32,
@@ -322,6 +364,22 @@ const styles: any = {
     background: "#6366f1",
     color: "white",
     cursor: "pointer",
+    fontWeight: "bold",
+  },
+
+  total: {
+    color: "#111827",
+    marginTop: 15,
+  },
+
+  payBtn: {
+    width: "100%",
+    padding: 15,
+    marginTop: 15,
+    background: "#10b981",
+    color: "white",
+    border: "none",
+    borderRadius: 12,
     fontWeight: "bold",
   },
 };
