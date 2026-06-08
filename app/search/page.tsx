@@ -38,7 +38,6 @@ export default function SearchPage() {
     );
   });
 
-  /* ================= DELETE ================= */
   async function deleteProduct(id: string) {
     const ok = confirm("Delete this product?");
     if (!ok) return;
@@ -56,7 +55,6 @@ export default function SearchPage() {
     loadProducts();
   }
 
-  /* ================= OPEN EDIT MODAL ================= */
   function openEdit(product: any) {
     setEditProduct(product);
     setForm({
@@ -68,7 +66,6 @@ export default function SearchPage() {
     });
   }
 
-  /* ================= SAVE EDIT ================= */
   async function saveEdit() {
     if (!editProduct) return;
 
@@ -94,11 +91,10 @@ export default function SearchPage() {
 
   return (
     <div style={styles.page}>
-      <h1 style={{color: "black", fontSize:20}}>🔍 Products</h1>
+      <h1 style={{ color: "black", fontSize: 20 }}>🔍 Products</h1>
 
       <input
         style={styles.search}
-        className="searchInput"
         placeholder="Search products..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
@@ -113,25 +109,28 @@ export default function SearchPage() {
               <img src={p.image_url} style={styles.image} />
             )}
 
-            <h3 style={{color: "black", fontSize:20 }}>{p.name}</h3>
+            <h3 style={{ color: "black", fontSize: 16 }}>
+              {p.name}
+            </h3>
 
             <p style={styles.text}>Brand: {p.brand}</p>
             <p style={styles.text}>Price: ${p.price}</p>
+
             <p
-  style={{
-    display: "inline-block",
-    padding: "2px 8px",
-    borderRadius: 6,
-    fontSize: 12,
-    background:
-      p.stock_quantity <= 3 ? "#fee2e2" : "#f3f4f6",
-    color:
-      p.stock_quantity <= 3 ? "#b91c1c" : "#111827",
-    fontWeight: 600,
-  }}
->
-  Stock: {p.stock_quantity}
-</p>
+              style={{
+                display: "inline-block",
+                padding: "3px 8px",
+                borderRadius: 6,
+                fontSize: 12,
+                background:
+                  p.stock_quantity <= 3 ? "#fee2e2" : "#f3f4f6",
+                color:
+                  p.stock_quantity <= 3 ? "#b91c1c" : "#111827",
+                fontWeight: 600,
+              }}
+            >
+              Stock: {p.stock_quantity}
+            </p>
 
             {p.barcode && (
               <p style={styles.barcode}>
@@ -139,7 +138,6 @@ export default function SearchPage() {
               </p>
             )}
 
-            {/* ACTIONS */}
             <div style={styles.actions}>
               <button
                 style={styles.editBtn}
@@ -159,40 +157,39 @@ export default function SearchPage() {
         ))}
       </div>
 
-      {/* ================= EDIT MODAL ================= */}
+      {/* EDIT MODAL */}
       {editProduct && (
         <div style={styles.modalOverlay}>
           <div style={styles.modal}>
-            <h2  style={{color: "black" }}>Edit Product</h2>
+            <h2 style={{ color: "black" }}>Edit Product</h2>
 
-            <label style={{color: "black" }}>Name</label>
             <input
               value={form.name}
               onChange={(e) =>
                 setForm({ ...form, name: e.target.value })
               }
-               style={{color: "gray" }}
+              placeholder="Name"
+              style={styles.input}
             />
 
-            <label  style={{color: "black" }}>Brand</label>
             <input
               value={form.brand}
               onChange={(e) =>
                 setForm({ ...form, brand: e.target.value })
               }
-               style={{color: "gray" }}
+              placeholder="Brand"
+              style={styles.input}
             />
 
-            <label  style={{color: "black" }}>Price</label>
             <input
               value={form.price}
               onChange={(e) =>
                 setForm({ ...form, price: e.target.value })
               }
-               style={{color: "gray" }}
+              placeholder="Price"
+              style={styles.input}
             />
 
-            <label  style={{color: "black" }}>Stock</label>
             <input
               value={form.stock_quantity}
               onChange={(e) =>
@@ -201,16 +198,17 @@ export default function SearchPage() {
                   stock_quantity: e.target.value,
                 })
               }
-               style={{color: "gray" }}
+              placeholder="Stock"
+              style={styles.input}
             />
 
-            <label  style={{color: "black" }}>Barcode</label>
             <input
               value={form.barcode}
               onChange={(e) =>
                 setForm({ ...form, barcode: e.target.value })
               }
-               style={{color: "gray" }}
+              placeholder="Barcode"
+              style={styles.input}
             />
 
             <div style={styles.modalActions}>
@@ -221,10 +219,7 @@ export default function SearchPage() {
                 Cancel
               </button>
 
-              <button
-                onClick={saveEdit}
-                style={styles.saveBtn}
-              >
+              <button onClick={saveEdit} style={styles.saveBtn}>
                 Save
               </button>
             </div>
@@ -235,18 +230,12 @@ export default function SearchPage() {
   );
 }
 
-/* ================= STYLES ================= */
-
 const styles: any = {
   page: {
     padding: 20,
-    paddingTop:50,
+    paddingTop: 50,
     background: "#f2f3f8",
     minHeight: "100vh",
-  },
-
-  title: {
-    marginBottom: 10,
   },
 
   search: {
@@ -259,8 +248,7 @@ const styles: any = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns:
-      "repeat(auto-fill, minmax(180px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
     gap: 12,
   },
 
@@ -269,6 +257,9 @@ const styles: any = {
     borderRadius: 14,
     padding: 12,
     boxShadow: "0 5px 15px rgba(0,0,0,0.05)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
   },
 
   image: {
@@ -334,6 +325,12 @@ const styles: any = {
     gap: 8,
   },
 
+  input: {
+    padding: 10,
+    borderRadius: 8,
+    border: "1px solid #ddd",
+  },
+
   modalActions: {
     display: "flex",
     gap: 10,
@@ -356,5 +353,4 @@ const styles: any = {
     borderRadius: 8,
     color: "white",
   },
-
 };
