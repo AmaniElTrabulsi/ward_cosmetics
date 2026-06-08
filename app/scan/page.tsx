@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { supabase } from "@/lib/supabase";
 
@@ -9,6 +9,8 @@ export default function ScanPage() {
   const [product, setProduct] = useState<any>(null);
   const [error, setError] = useState("");
   const [scannerStarted, setScannerStarted] = useState(false);
+
+  const scannerRef = useRef<any>(null);
 
   // FETCH PRODUCT
   async function fetchProduct(code: string) {
@@ -31,9 +33,12 @@ export default function ScanPage() {
     setProduct(data);
   }
 
-  // SCANNER
+  // START / STOP SCANNER SAFELY
   useEffect(() => {
     if (!scannerStarted) return;
+
+    // prevent double scanner
+    if (scannerRef.current) return;
 
     const scanner = new Html5QrcodeScanner(
       "reader",
@@ -44,15 +49,29 @@ export default function ScanPage() {
       false
     );
 
-    scanner.render(async (decodedText) => {
+    scannerRef.current = scanner;
+
+    const onScanSuccess = async (decodedText: string) => {
       setBarcode(decodedText);
       await fetchProduct(decodedText);
-      scanner.clear();
+
+      // stop scanner after successful scan
+      try {
+        await scanner.clear();
+      } catch {}
+
+      scannerRef.current = null;
       setScannerStarted(false);
-    });
+    };
+
+    scanner.render(onScanSuccess);
 
     return () => {
-      scanner.clear().catch(() => {});
+      try {
+        scanner.clear().catch(() => {});
+      } catch {}
+
+      scannerRef.current = null;
     };
   }, [scannerStarted]);
 
@@ -71,7 +90,13 @@ export default function ScanPage() {
 
         <button
           style={styles.btnSecondary}
-          onClick={() => setScannerStarted(false)}
+          onClick={() => {
+            setScannerStarted(false);
+            try {
+              scannerRef.current?.clear?.();
+            } catch {}
+            scannerRef.current = null;
+          }}
         >
           Stop Camera
         </button>
@@ -102,7 +127,7 @@ export default function ScanPage() {
       {/* ERROR */}
       {error && <p style={styles.error}>{error}</p>}
 
-      {/* PRODUCT CARD (MATCHES SEARCH PAGE STYLE) */}
+      {/* PRODUCT */}
       {product && (
         <div style={styles.card}>
           {product.image_url && (
@@ -111,8 +136,8 @@ export default function ScanPage() {
 
           <h3 style={styles.titleText}>{product.name}</h3>
 
-          <p style={styles.text}><b>Brand:</b> {product.brand}</p>
-          <p style={styles.text}><b>Price:</b> {product.price}$</p>
+          <p style={styles.text}>Brand: {product.brand}</p>
+          <p style={styles.text}>Price: ${product.price}</p>
 
           {/* STOCK BADGE */}
           <p
@@ -131,11 +156,9 @@ export default function ScanPage() {
             Stock: {product.stock_quantity}
           </p>
 
-          {product.barcode && (
-            <p style={styles.barcode}>
-              Barcode: {product.barcode}
-            </p>
-          )}
+          <p style={styles.barcode}>
+            Barcode: {product.barcode}
+          </p>
         </div>
       )}
     </div>
@@ -154,13 +177,6 @@ const styles: any = {
     marginBottom: 15,
     color: "black",
     fontSize: 20,
-  },
-
-  titleText: {
-    color: "black",
-    fontSize: 20,
-    marginBottom: 5,
-    fontWeight: "bold"
   },
 
   buttons: {
@@ -236,7 +252,7 @@ const styles: any = {
   },
 
   text: {
-    fontSize: 15,
+    fontSize: 12,
     color: "#242323",
   },
 
@@ -248,5 +264,11 @@ const styles: any = {
   error: {
     color: "red",
     marginBottom: 10,
+  },
+
+  titleText: {
+    color: "black",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 };
