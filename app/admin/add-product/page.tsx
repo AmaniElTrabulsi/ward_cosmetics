@@ -19,7 +19,7 @@ export default function AddProduct() {
     let imageUrl = "";
 
     if (file) {
-      const fileName = Date.now() + file.name;
+      const fileName = Date.now() + "_" + file.name;
 
       await supabase.storage
         .from("product-images")
@@ -47,24 +47,64 @@ export default function AddProduct() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h2>➕ Add Product</h2>
+        <h2 style={{ color: "black" }}>➕ Add Product</h2>
 
-        <input placeholder="Name" onChange={(e) => setName(e.target.value)} />
-        <input placeholder="Brand" onChange={(e) => setBrand(e.target.value)} />
-        <input placeholder="Price" onChange={(e) => setPrice(e.target.value)} />
-        <input placeholder="Stock" onChange={(e) => setStock(e.target.value)} />
-        <input placeholder="Barcode" onChange={(e) => setBarcode(e.target.value)} />
-
-        {/* CAMERA + GALLERY FIX */}
         <input
-          type="file"
-          accept="image/*"
+          placeholder="Name"
+          onChange={(e) => setName(e.target.value)}
+          style={styles.input}
+        />
+        <input
+          placeholder="Brand"
+          onChange={(e) => setBrand(e.target.value)}
+          style={styles.input}
+        />
+        <input
+          placeholder="Price"
+          onChange={(e) => setPrice(e.target.value)}
+          style={styles.input}
+        />
+        <input
+          placeholder="Stock"
+          onChange={(e) => setStock(e.target.value)}
+          style={styles.input}
+        />
+        <input
+          placeholder="Barcode"
+          onChange={(e) => setBarcode(e.target.value)}
+          style={styles.input}
         />
 
-        
+        {/* CUSTOM FILE UPLOAD */}
+        <div style={styles.fileWrapper}>
+          <label style={styles.fileBtn}>
+            📷 Choose Image
+            <input
+              type="file"
+              accept="image/*"
+              style={styles.hiddenFile}
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                setFile(f);
 
+                if (f) {
+                  setPreview(URL.createObjectURL(f));
+                }
+              }}
+            />
+          </label>
+
+          <span style={styles.fileText}>
+            {file ? file.name : "No file selected"}
+          </span>
+        </div>
+
+        {/* PREVIEW */}
         {preview && (
-          <img src={preview} style={{ width: "100%", marginTop: 10 }} />
+          <img
+            src={preview}
+            style={styles.preview}
+          />
         )}
 
         <button onClick={save} style={styles.btn}>
@@ -88,6 +128,15 @@ const styles: any = {
     borderRadius: 16,
     maxWidth: 400,
     margin: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+  },
+
+  input: {
+    padding: 10,
+    borderRadius: 10,
+    border: "1px solid #ddd",
   },
 
   btn: {
@@ -98,5 +147,36 @@ const styles: any = {
     color: "white",
     border: "none",
     borderRadius: 12,
+  },
+
+  fileWrapper: {
+    marginTop: 10,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  fileBtn: {
+    background: "#6366f1",
+    color: "white",
+    padding: "10px 12px",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontSize: 14,
+  },
+
+  hiddenFile: {
+    display: "none",
+  },
+
+  fileText: {
+    fontSize: 12,
+    color: "#111827",
+  },
+
+  preview: {
+    width: "100%",
+    marginTop: 10,
+    borderRadius: 10,
   },
 };

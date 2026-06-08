@@ -42,6 +42,8 @@ const styles: any = {
   title: {
     fontSize: 32,
     marginBottom: 5,
+    paddingTop: 40,
+    color:"black",
   },
 
   subtitle: {
@@ -62,6 +64,7 @@ const styles: any = {
     cursor: "pointer",
     boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
     transition: "0.2s",
+    color:"black",
   },
 
   icon: {
