@@ -174,6 +174,7 @@ const styles: any = {
     color: "black",
     fontSize: 24,
     marginBottom: 20,
+    paddingTop:50,
   },
 
   section: {
