@@ -11,12 +11,12 @@ export default function Home() {
     { title: "Register", icon: "🧾", route: "/register", color: "#10b981" },
     { title: "Add Product", icon: "➕", route: "/admin/add-product", color: "#f59e0b" },
     { title: "Dashboard", icon: "📊", route: "/dashboard", color: "#ef4444" },
+    { title: "Admin-Login", icon: "📊", route: "/admin-login", color: "#97cd19" },
   ];
 
   return (
     <div style={styles.page}>
       <h1 style={styles.title}>Ward Cosmetics</h1>
-      <p style={styles.subtitle}>Modern Inventory & POS System</p>
 
       <div style={styles.grid}>
         {cards.map((c) => (
