@@ -9,7 +9,6 @@ export default function DashboardPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* ================= LOAD ALL DATA ================= */
   async function loadData() {
     setLoading(true);
 
@@ -29,37 +28,23 @@ export default function DashboardPage() {
   useEffect(() => {
     loadData();
 
-    /* ================= REALTIME SUBSCRIPTION ================= */
     const channel = supabase
       .channel("dashboard-realtime")
-
-      // SALES CHANGES
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "sales" },
-        () => {
-          loadData();
-        }
+        () => loadData()
       )
-
-      // SALE ITEMS CHANGES
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "sale_items" },
-        () => {
-          loadData();
-        }
+        () => loadData()
       )
-
-      // PRODUCT CHANGES (stock updates)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "products" },
-        () => {
-          loadData();
-        }
+        () => loadData()
       )
-
       .subscribe();
 
     return () => {
@@ -67,7 +52,8 @@ export default function DashboardPage() {
     };
   }, []);
 
-  /* ================= TODAY + MONTH ================= */
+  /* ================= TODAY ================= */
+
   const todayStr = new Date().toDateString();
 
   const todaySales = sales.filter(
@@ -79,35 +65,46 @@ export default function DashboardPage() {
     0
   );
 
-  const totalRevenue = sales.reduce(
-    (sum, s) => sum + Number(s.total || 0),
+  const todaySaleIds = todaySales.map((s) => s.id);
+
+  const todayItems = items.filter((i) =>
+    todaySaleIds.includes(i.sale_id)
+  );
+
+  const todayItemsSold = todayItems.reduce(
+    (sum, i) => sum + (i.quantity || 0),
     0
   );
 
-  /* ================= PRODUCT ANALYTICS ================= */
-  const productStats = products.map((p) => {
-    const related = items.filter((i) => i.product_id === p.id);
+  /* ================= PRODUCTS SOLD TODAY ================= */
 
-    const qtySold = related.reduce(
-      (sum, i) => sum + (i.quantity || 0),
-      0
-    );
+  const productsSoldToday = products
+    .map((p) => {
+      const related = todayItems.filter(
+        (i) => i.product_id === p.id
+      );
 
-    const revenue = related.reduce(
-      (sum, i) => sum + (i.quantity || 0) * Number(i.price || 0),
-      0
-    );
+      const qtySold = related.reduce(
+        (sum, i) => sum + (i.quantity || 0),
+        0
+      );
 
-    return { ...p, qtySold, revenue };
-  });
+      const revenue = related.reduce(
+        (sum, i) =>
+          sum + (i.quantity || 0) * Number(i.price || 0),
+        0
+      );
 
-  const bestSelling = [...productStats].sort(
-    (a, b) => b.qtySold - a.qtySold
-  );
+      return {
+        ...p,
+        qtySold,
+        revenue,
+      };
+    })
+    .filter((p) => p.qtySold > 0)
+    .sort((a, b) => b.qtySold - a.qtySold);
 
-  const topRevenue = [...productStats].sort(
-    (a, b) => b.revenue - a.revenue
-  );
+  /* ================= LOW STOCK ================= */
 
   const lowStock = products.filter(
     (p) => (p.stock_quantity || 0) <= 5
@@ -115,53 +112,104 @@ export default function DashboardPage() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.title}>📊 LIVE Dashboard</h1>
+      <h1 style={styles.title}>📊 Dashboard</h1>
 
       {loading && <p>Loading...</p>}
 
-      {/* ================= SUMMARY ================= */}
+      {/* SUMMARY */}
       <div style={styles.grid}>
         <div style={styles.card}>
           <h3>💰 Today Revenue</h3>
-          <p style={styles.big}>${todayRevenue.toFixed(2)}</p>
-        </div>
-
-        <div style={styles.card}>
-          <h3>💰 Total Revenue</h3>
-          <p style={styles.big}>${totalRevenue.toFixed(2)}</p>
-        </div>
-
-        <div style={styles.card}>
-          <h3>🧾 Sales</h3>
-          <p style={styles.big}>{sales.length}</p>
-        </div>
-
-        <div style={styles.card}>
-          <h3>📦 Items Sold</h3>
           <p style={styles.big}>
-            {items.reduce((s, i) => s + (i.quantity || 0), 0)}
+            ${todayRevenue.toFixed(2)}
+          </p>
+        </div>
+
+        <div style={styles.card}>
+          <h3>🧾 Today's Sales</h3>
+          <p style={styles.big}>
+            {todaySales.length}
+          </p>
+        </div>
+
+        <div style={styles.card}>
+          <h3>📦 Items Sold Today</h3>
+          <p style={styles.big}>
+            {todayItemsSold}
+          </p>
+        </div>
+
+        <div style={styles.card}>
+          <h3>🛒 Products Sold</h3>
+          <p style={styles.big}>
+            {productsSoldToday.length}
           </p>
         </div>
       </div>
 
-     
+      {/* PRODUCTS SOLD TODAY */}
 
-      {/* ================= LOW STOCK ================= */}
-      <h2 style={styles.section}>⚠️ Low Stock</h2>
+      <h2 style={styles.section}>
+        🛒 Products Sold Today
+      </h2>
+
+      <div style={styles.grid}>
+        {productsSoldToday.map((p) => (
+          <div key={p.id} style={styles.card}>
+            <h3 style={{ color: "black" }}>
+              {p.name}
+            </h3>
+
+            <p style={{ color: "black" }}>
+              Qty Sold: {p.qtySold}
+            </p>
+
+            <p style={{ color: "black" }}>
+              Revenue: ${p.revenue.toFixed(2)}
+            </p>
+          </div>
+        ))}
+
+        {productsSoldToday.length === 0 && (
+          <div style={styles.card}>
+            <p style={{ color: "black" }}>
+              No products sold today
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* LOW STOCK */}
+
+      <h2 style={styles.section}>
+        ⚠️ Low Stock Alerts
+      </h2>
 
       <div style={styles.grid}>
         {lowStock.map((p) => (
           <div key={p.id} style={styles.alertCard}>
-            <h3 style={{ color: "black" }}>{p.name}</h3>
-            <p style={{ color: "black" }}>Stock: {p.stock_quantity}</p>
+            <h3 style={{ color: "black" }}>
+              {p.name}
+            </h3>
+
+            <p style={{ color: "black" }}>
+              Stock: {p.stock_quantity}
+            </p>
           </div>
         ))}
+
+        {lowStock.length === 0 && (
+          <div style={styles.card}>
+            <p style={{ color: "black" }}>
+              No low stock products
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ================= STYLES ================= */
 const styles: any = {
   page: {
     padding: 20,
@@ -174,11 +222,12 @@ const styles: any = {
     color: "black",
     fontSize: 24,
     marginBottom: 20,
-    paddingTop:50,
+    paddingTop: 50,
   },
 
   section: {
     marginTop: 25,
+    marginBottom: 10,
     color: "black",
   },
 
@@ -193,7 +242,7 @@ const styles: any = {
     padding: 15,
     borderRadius: 12,
     boxShadow: "0 5px 15px rgba(0,0,0,0.05)",
-    color:"black",
+    color: "black",
   },
 
   alertCard: {
@@ -203,8 +252,9 @@ const styles: any = {
   },
 
   big: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
     color: "#111827",
+    marginTop: 10,
   },
 };
