@@ -11,26 +11,53 @@ export default function AdminLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  async function login() {
-    setError("");
+async function login() {
+  setError("");
 
-    const { data, error } = await supabase
+  const { data, error } = await supabase
+    .from("admins")
+    .select("*")
+    .eq("email", email)
+    .eq("password", password)
+    .maybeSingle();
+
+  if (error || !data) {
+    setError("❌ Invalid login");
+    return;
+  }
+
+  // CREATE OR GET DEVICE ID
+  let deviceId = localStorage.getItem("device_id");
+
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem("device_id", deviceId);
+  }
+
+  // 🚨 FIRST TIME LOGIN → SAVE DEVICE
+  if (!data.device_id) {
+    const { error: updateError } = await supabase
       .from("admins")
-      .select("*")
-      .eq("email", email)
-      .eq("password", password)
-      .maybeSingle();
+      .update({ device_id: deviceId })
+      .eq("id", data.id);
 
-    if (error || !data) {
-      setError("❌ Invalid login");
+    if (updateError) {
+      setError("❌ Failed to lock device");
       return;
     }
-
-    // save session
-    localStorage.setItem("admin", JSON.stringify(data));
-
-    router.push("/owner-dashboard");
   }
+
+  // 🚫 BLOCK WRONG DEVICE
+  if (data.device_id && data.device_id !== deviceId) {
+    setError("🚫 This device is not authorized");
+    return;
+  }
+
+  // LOGIN SUCCESS
+  localStorage.setItem("admin", JSON.stringify(data));
+
+  router.push("/owner-dashboard");
+}
 
   return (
     <div style={styles.page}>
