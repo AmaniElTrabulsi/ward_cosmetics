@@ -12,7 +12,6 @@ export default function SearchPage() {
   const [form, setForm] = useState<any>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // ✅ NEW: image preview
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -136,8 +135,6 @@ export default function SearchPage() {
       <div style={styles.grid}>
         {filtered.map((p) => (
           <div key={p.id} style={styles.card}>
-            
-            {/* ✅ CLICKABLE IMAGE */}
             {p.image_url && (
               <img
                 src={p.image_url}
@@ -153,33 +150,16 @@ export default function SearchPage() {
             <p style={styles.text}>Brand: {p.brand}</p>
             <p style={styles.text}>Price: ${p.price}</p>
 
-            <p
-              style={{
-                display: "inline-block",
-                padding: "3px 8px",
-                borderRadius: 6,
-                fontSize: 12,
-                background:
-                  p.stock_quantity <= 3 ? "#fee2e2" : "#f3f4f6",
-                color:
-                  p.stock_quantity <= 3 ? "#b91c1c" : "#111827",
-                fontWeight: 600,
-              }}
-            >
+            <p style={styles.text}>
               Stock: {p.stock_quantity}
             </p>
 
             {p.barcode && (
-              <p style={styles.barcode}>
-                Barcode: {p.barcode}
-              </p>
+              <p style={styles.barcode}>Barcode: {p.barcode}</p>
             )}
 
             <div style={styles.actions}>
-              <button
-                style={styles.editBtn}
-                onClick={() => openEdit(p)}
-              >
+              <button style={styles.editBtn} onClick={() => openEdit(p)}>
                 ✏️ Edit
               </button>
 
@@ -199,6 +179,9 @@ export default function SearchPage() {
         <div style={styles.modalOverlay}>
           <div style={styles.modal}>
             <h2 style={{ color: "black" }}>Edit Product</h2>
+
+            {/* IMAGE */}
+            <label style={styles.label}>Image</label>
 
             {form.image_url && (
               <img
@@ -230,33 +213,38 @@ export default function SearchPage() {
               style={styles.input}
             />
 
+            {/* NAME */}
+            <label style={styles.label}>Name</label>
             <input
               value={form.name}
               onChange={(e) =>
                 setForm({ ...form, name: e.target.value })
               }
-              placeholder="Name"
               style={styles.input}
             />
 
+            {/* BRAND */}
+            <label style={styles.label}>Brand</label>
             <input
               value={form.brand}
               onChange={(e) =>
                 setForm({ ...form, brand: e.target.value })
               }
-              placeholder="Brand"
               style={styles.input}
             />
 
+            {/* PRICE */}
+            <label style={styles.label}>Price</label>
             <input
               value={form.price}
               onChange={(e) =>
                 setForm({ ...form, price: e.target.value })
               }
-              placeholder="Price"
               style={styles.input}
             />
 
+            {/* STOCK */}
+            <label style={styles.label}>Stock</label>
             <input
               value={form.stock_quantity}
               onChange={(e) =>
@@ -265,16 +253,16 @@ export default function SearchPage() {
                   stock_quantity: e.target.value,
                 })
               }
-              placeholder="Stock"
               style={styles.input}
             />
 
+            {/* BARCODE */}
+            <label style={styles.label}>Barcode</label>
             <input
               value={form.barcode}
               onChange={(e) =>
                 setForm({ ...form, barcode: e.target.value })
               }
-              placeholder="Barcode"
               style={styles.input}
             />
 
@@ -294,11 +282,10 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* ✅ IMAGE PREVIEW MODAL */}
+      {/* IMAGE PREVIEW */}
       {previewImage && (
         <div style={styles.previewOverlay}>
           <div style={styles.previewBox}>
-            
             <button
               onClick={() => setPreviewImage(null)}
               style={styles.closeBtn}
@@ -306,10 +293,7 @@ export default function SearchPage() {
               ✕
             </button>
 
-            <img
-              src={previewImage}
-              style={styles.previewImage}
-            />
+            <img src={previewImage} style={styles.previewImage} />
           </div>
         </div>
       )}
@@ -409,10 +393,17 @@ const styles: any = {
     background: "white",
     padding: 20,
     borderRadius: 12,
-    width: 300,
+    width: 320,
     display: "flex",
     flexDirection: "column",
-    gap: 8,
+    gap: 6,
+  },
+
+  label: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "black",
+    marginTop: 6,
   },
 
   input: {
@@ -445,7 +436,6 @@ const styles: any = {
     color: "white",
   },
 
-  /* ✅ IMAGE PREVIEW */
   previewOverlay: {
     position: "fixed",
     top: 0,
