@@ -41,6 +41,11 @@ export default function SearchPage() {
     );
   });
 
+  // ======================
+  // 📊 STATS
+  // ======================
+  const totalProducts = filtered.length;
+
   async function deleteProduct(id: string) {
     const ok = confirm("Delete this product?");
     if (!ok) return;
@@ -130,6 +135,17 @@ export default function SearchPage() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
+      {/* ================= KPI CARD ================= */}
+      <div style={styles.statsBar}>
+        <div style={styles.statBox}>
+          <div style={styles.statIcon}>📦</div>
+          <div>
+            <div style={styles.statNumber}>{totalProducts}</div>
+            <div style={styles.statLabel}>Total Products</div>
+          </div>
+        </div>
+      </div>
+
       {loading && <p>Loading...</p>}
 
       <div style={styles.grid}>
@@ -150,7 +166,13 @@ export default function SearchPage() {
             <p style={styles.text}>Brand: {p.brand}</p>
             <p style={styles.text}>Price: ${p.price}</p>
 
-            <p style={styles.text}>
+            <p
+              style={{
+                ...styles.text,
+                color: p.stock_quantity < 5 ? "red" : "#242323",
+                fontWeight: p.stock_quantity < 5 ? "bold" : "normal",
+              }}
+            >
               Stock: {p.stock_quantity}
             </p>
 
@@ -159,7 +181,10 @@ export default function SearchPage() {
             )}
 
             <div style={styles.actions}>
-              <button style={styles.editBtn} onClick={() => openEdit(p)}>
+              <button
+                style={styles.editBtn}
+                onClick={() => openEdit(p)}
+              >
                 ✏️ Edit
               </button>
 
@@ -180,7 +205,6 @@ export default function SearchPage() {
           <div style={styles.modal}>
             <h2 style={{ color: "black" }}>Edit Product</h2>
 
-            {/* IMAGE */}
             <label style={styles.label}>Image</label>
 
             {form.image_url && (
@@ -213,7 +237,6 @@ export default function SearchPage() {
               style={styles.input}
             />
 
-            {/* NAME */}
             <label style={styles.label}>Name</label>
             <input
               value={form.name}
@@ -223,7 +246,6 @@ export default function SearchPage() {
               style={styles.input}
             />
 
-            {/* BRAND */}
             <label style={styles.label}>Brand</label>
             <input
               value={form.brand}
@@ -233,7 +255,6 @@ export default function SearchPage() {
               style={styles.input}
             />
 
-            {/* PRICE */}
             <label style={styles.label}>Price</label>
             <input
               value={form.price}
@@ -243,7 +264,6 @@ export default function SearchPage() {
               style={styles.input}
             />
 
-            {/* STOCK */}
             <label style={styles.label}>Stock</label>
             <input
               value={form.stock_quantity}
@@ -256,7 +276,6 @@ export default function SearchPage() {
               style={styles.input}
             />
 
-            {/* BARCODE */}
             <label style={styles.label}>Barcode</label>
             <input
               value={form.barcode}
@@ -316,8 +335,51 @@ const styles: any = {
     padding: 12,
     borderRadius: 10,
     border: "1px solid #040404",
-    marginBottom: 15,
+    marginBottom: 10,
     color: "black",
+  },
+
+  statsBar: {
+    display: "flex",
+    marginBottom: 18,
+  },
+
+  statBox: {
+    flex: 1,
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    background: "linear-gradient(135deg, #4f46e5, #3b82f6)",
+    boxShadow: "0 10px 25px rgba(59,130,246,0.25)",
+    color: "white",
+  },
+
+  statIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    background: "rgba(255,255,255,0.2)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 20,
+  },
+
+  statNumber: {
+    fontSize: 22,
+    fontWeight: 800,
+    lineHeight: 1,
+    color: "white",
+  },
+
+  statLabel: {
+    fontSize: 11,
+    opacity: 0.85,
+    marginTop: 2,
+    letterSpacing: "0.5px",
+    textTransform: "uppercase",
   },
 
   grid: {
