@@ -9,8 +9,17 @@ export default function OwnerDashboard() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("");
+  const [viewMode, setViewMode] = useState<"daily" | "monthly">(
+    "daily"
+  );
+
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
+  const [selectedMonth, setSelectedMonth] = useState(
+    new Date().toISOString().slice(0, 7)
+  );
 
   useEffect(() => {
     const admin = localStorage.getItem("admin");
@@ -44,15 +53,14 @@ export default function OwnerDashboard() {
   const filteredSales = sales.filter((s) => {
     const d = new Date(s.created_at);
 
-    const matchDay =
-      selectedDate === "" ||
-      d.toISOString().split("T")[0] === selectedDate;
+    const day = d.toISOString().split("T")[0];
+    const month = d.toISOString().slice(0, 7);
 
-    const matchMonth =
-      selectedMonth === "" ||
-      d.toISOString().slice(0, 7) === selectedMonth;
+    if (viewMode === "daily") {
+      return day === selectedDate;
+    }
 
-    return matchDay && matchMonth;
+    return month === selectedMonth;
   });
 
   const saleIds = filteredSales.map((s) => s.id);
@@ -90,7 +98,11 @@ export default function OwnerDashboard() {
         0
       );
 
-      return { ...p, qtySold, revenue };
+      return {
+        ...p,
+        qtySold,
+        revenue,
+      };
     })
     .filter((p) => p.qtySold > 0)
     .sort((a, b) => b.qtySold - a.qtySold);
@@ -100,40 +112,93 @@ export default function OwnerDashboard() {
   );
 
   if (loading) {
-    return <p style={{ color: "black" }}>Loading...</p>;
+    return (
+      <p style={{ color: "black", padding: 20 }}>
+        Loading...
+      </p>
+    );
   }
 
   return (
     <div style={styles.page}>
       <h1 style={styles.title}>👑 Owner Dashboard</h1>
 
-      {/* FILTERS */}
+      {/* MODE SELECTOR */}
       <div style={styles.filters}>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          style={styles.input}
-        />
+        <button
+          style={{
+            ...styles.modeBtn,
+            background:
+              viewMode === "daily"
+                ? "#3b82f6"
+                : "#d1d5db",
+            color:
+              viewMode === "daily"
+                ? "white"
+                : "black",
+          }}
+          onClick={() => setViewMode("daily")}
+        >
+          📅 Daily
+        </button>
 
-        <input
-          type="month"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          style={styles.input}
-        />
+        <button
+          style={{
+            ...styles.modeBtn,
+            background:
+              viewMode === "monthly"
+                ? "#10b981"
+                : "#d1d5db",
+            color:
+              viewMode === "monthly"
+                ? "white"
+                : "black",
+          }}
+          onClick={() => setViewMode("monthly")}
+        >
+          📆 Monthly
+        </button>
       </div>
 
-      {/* STATS */}
+      {/* DATE / MONTH PICKER */}
+      <div style={{ marginBottom: 20 }}>
+        {viewMode === "daily" && (
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) =>
+              setSelectedDate(e.target.value)
+            }
+            style={styles.input}
+          />
+        )}
+
+        {viewMode === "monthly" && (
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) =>
+              setSelectedMonth(e.target.value)
+            }
+            style={styles.input}
+          />
+        )}
+      </div>
+
+      {/* SUMMARY */}
       <div style={styles.grid}>
         <div style={styles.card}>
           <h3 style={styles.text}>💰 Revenue</h3>
-          <p style={styles.big}>{revenue.toFixed(2)}</p>
+          <p style={styles.big}>
+            ${revenue.toFixed(2)}
+          </p>
         </div>
 
         <div style={styles.card}>
           <h3 style={styles.text}>🧾 Sales</h3>
-          <p style={styles.big}>{filteredSales.length}</p>
+          <p style={styles.big}>
+            {filteredSales.length}
+          </p>
         </div>
 
         <div style={styles.card}>
@@ -143,27 +208,36 @@ export default function OwnerDashboard() {
       </div>
 
       {/* PRODUCTS */}
-      <h2 style={styles.section}>🛒 Product Performance</h2>
+      <h2 style={styles.section}>
+        🛒 Product Performance
+      </h2>
 
       <div style={styles.grid}>
         {productStats.map((p) => (
           <div key={p.id} style={styles.card}>
             <h3 style={styles.text}>{p.name}</h3>
-            <p style={styles.text}>Qty: {p.qtySold}</p>
+
             <p style={styles.text}>
-              Revenue: {p.revenue.toFixed(2)}
+              Qty Sold: {p.qtySold}
+            </p>
+
+            <p style={styles.text}>
+              Revenue: ${p.revenue.toFixed(2)}
             </p>
           </div>
         ))}
       </div>
 
       {/* LOW STOCK */}
-      <h2 style={styles.section}>⚠️ Low Stock</h2>
+      <h2 style={styles.section}>
+        ⚠️ Low Stock Alerts
+      </h2>
 
       <div style={styles.grid}>
         {lowStock.map((p) => (
           <div key={p.id} style={styles.alertCard}>
             <h3 style={styles.text}>{p.name}</h3>
+
             <p style={styles.text}>
               Stock: {p.stock_quantity}
             </p>
@@ -187,10 +261,12 @@ const styles: any = {
     color: "black",
     fontSize: 24,
     marginBottom: 20,
+    paddingTop: 30,
   },
 
   section: {
-    marginTop: 20,
+    marginTop: 25,
+    marginBottom: 10,
     color: "black",
   },
 
@@ -198,6 +274,14 @@ const styles: any = {
     display: "flex",
     gap: 10,
     marginBottom: 15,
+  },
+
+  modeBtn: {
+    padding: "10px 16px",
+    borderRadius: 10,
+    border: "none",
+    cursor: "pointer",
+    fontWeight: "bold",
   },
 
   input: {
@@ -218,14 +302,14 @@ const styles: any = {
     background: "white",
     padding: 15,
     borderRadius: 12,
-    color: "black", // ✅ IMPORTANT FIX
+    color: "black",
   },
 
   alertCard: {
     background: "#fee2e2",
     padding: 15,
     borderRadius: 12,
-    color: "black", // ✅ IMPORTANT FIX
+    color: "black",
   },
 
   text: {
@@ -233,7 +317,7 @@ const styles: any = {
   },
 
   big: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "bold",
     color: "black",
   },
