@@ -10,6 +10,10 @@ export default function SearchPage() {
 
   const [editProduct, setEditProduct] = useState<any | null>(null);
   const [form, setForm] = useState<any>({});
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // ✅ NEW: image preview
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -63,11 +67,36 @@ export default function SearchPage() {
       price: product.price,
       stock_quantity: product.stock_quantity,
       barcode: product.barcode,
+      image_url: product.image_url || "",
     });
+
+    setImageFile(null);
   }
 
   async function saveEdit() {
     if (!editProduct) return;
+
+    let imageUrl = form.image_url;
+
+    if (imageFile) {
+      const fileName =
+        Date.now() + "-" + imageFile.name.replace(/\s/g, "-");
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(fileName, imageFile);
+
+      if (uploadError) {
+        alert("Image upload failed");
+        return;
+      }
+
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(fileName);
+
+      imageUrl = data.publicUrl;
+    }
 
     const { error } = await supabase
       .from("products")
@@ -77,6 +106,7 @@ export default function SearchPage() {
         price: Number(form.price),
         stock_quantity: Number(form.stock_quantity),
         barcode: form.barcode,
+        image_url: imageUrl,
       })
       .eq("id", editProduct.id);
 
@@ -86,6 +116,7 @@ export default function SearchPage() {
     }
 
     setEditProduct(null);
+    setImageFile(null);
     loadProducts();
   }
 
@@ -105,8 +136,14 @@ export default function SearchPage() {
       <div style={styles.grid}>
         {filtered.map((p) => (
           <div key={p.id} style={styles.card}>
+            
+            {/* ✅ CLICKABLE IMAGE */}
             {p.image_url && (
-              <img src={p.image_url} style={styles.image} />
+              <img
+                src={p.image_url}
+                style={{ ...styles.image, cursor: "pointer" }}
+                onClick={() => setPreviewImage(p.image_url)}
+              />
             )}
 
             <h3 style={{ color: "black", fontSize: 16 }}>
@@ -162,6 +199,36 @@ export default function SearchPage() {
         <div style={styles.modalOverlay}>
           <div style={styles.modal}>
             <h2 style={{ color: "black" }}>Edit Product</h2>
+
+            {form.image_url && (
+              <img
+                src={form.image_url}
+                style={{
+                  width: "100%",
+                  height: 150,
+                  objectFit: "cover",
+                  borderRadius: 10,
+                }}
+              />
+            )}
+
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                if (e.target.files?.[0]) {
+                  const file = e.target.files[0];
+                  setImageFile(file);
+
+                  setForm({
+                    ...form,
+                    image_url: URL.createObjectURL(file),
+                  });
+                }
+              }}
+              style={styles.input}
+            />
 
             <input
               value={form.name}
@@ -226,9 +293,31 @@ export default function SearchPage() {
           </div>
         </div>
       )}
+
+      {/* ✅ IMAGE PREVIEW MODAL */}
+      {previewImage && (
+        <div style={styles.previewOverlay}>
+          <div style={styles.previewBox}>
+            
+            <button
+              onClick={() => setPreviewImage(null)}
+              style={styles.closeBtn}
+            >
+              ✕
+            </button>
+
+            <img
+              src={previewImage}
+              style={styles.previewImage}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/* ================= STYLES ================= */
 
 const styles: any = {
   page: {
@@ -244,9 +333,9 @@ const styles: any = {
     borderRadius: 10,
     border: "1px solid #040404",
     marginBottom: 15,
+    color: "black",
   },
 
-  /* ✅ FIXED: always 2 items per row on phone */
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(2, 1fr)",
@@ -310,7 +399,7 @@ const styles: any = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: "rgba(153, 149, 149, 0.5)",
+    background: "rgba(0,0,0,0.4)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -330,6 +419,7 @@ const styles: any = {
     padding: 10,
     borderRadius: 8,
     border: "1px solid #ddd",
+    color: "black",
   },
 
   modalActions: {
@@ -353,5 +443,46 @@ const styles: any = {
     border: "none",
     borderRadius: 8,
     color: "white",
+  },
+
+  /* ✅ IMAGE PREVIEW */
+  previewOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0,0,0,0.85)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+
+  previewBox: {
+    position: "relative",
+    maxWidth: "90%",
+    maxHeight: "90%",
+  },
+
+  previewImage: {
+    width: "100%",
+    maxHeight: "90vh",
+    borderRadius: 12,
+  },
+
+  closeBtn: {
+    position: "absolute",
+    top: -15,
+    right: -15,
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    border: "none",
+    background: "white",
+    color: "black",
+    fontSize: 18,
+    fontWeight: "bold",
+    cursor: "pointer",
   },
 };
