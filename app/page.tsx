@@ -11,22 +11,31 @@ export default function Home() {
     { title: "Register", icon: "🧾", route: "/register", color: "#10b981" },
     { title: "Add Product", icon: "➕", route: "/admin/add-product", color: "#f59e0b" },
     { title: "Dashboard", icon: "📊", route: "/dashboard", color: "#ef4444" },
-    { title: "Admin-Login", icon: "📊", route: "/admin-login", color: "#97cd19" },
+    { title: "Admin Login", icon: "🔐", route: "/admin-login", color: "#a3e635" },
   ];
 
   return (
     <div style={styles.page}>
       <h1 style={styles.title}>Ward Cosmetics</h1>
+      <p style={styles.subtitle}>Inventory & Admin Panel</p>
 
       <div style={styles.grid}>
         {cards.map((c) => (
           <div
             key={c.title}
-            style={{ ...styles.card, borderTop: `4px solid ${c.color}` }}
+            style={{
+              ...styles.card,
+              borderTop: `4px solid ${c.color}`,
+            }}
             onClick={() => router.push(c.route)}
           >
-            <div style={{ ...styles.icon, color: c.color }}>{c.icon}</div>
-            <h3>{c.title}</h3>
+            <div style={{ ...styles.iconWrap, background: `${c.color}15` }}>
+              <div style={{ ...styles.icon, color: c.color }}>
+                {c.icon}
+              </div>
+            </div>
+
+            <h3 style={styles.cardTitle}>{c.title}</h3>
           </div>
         ))}
       </div>
@@ -36,39 +45,61 @@ export default function Home() {
 
 const styles: any = {
   page: {
-    padding: 10,
+    padding: 16,
+    paddingTop: 50,
+    background: "#f2f3f8",
+    minHeight: "100vh",
   },
 
   title: {
-    fontSize: 32,
-    marginBottom: 5,
-    paddingTop: 40,
-    color:"black",
+    fontSize: 30,
+    fontWeight: 800,
+    marginBottom: 4,
+    color: "#111827",
   },
 
   subtitle: {
-    color: "#0b0b0b",
-    marginBottom: 20,
+    fontSize: 13,
+    color: "#6b7280",
+    marginBottom: 18,
   },
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-    gap: 15,
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: 14,
   },
 
   card: {
     background: "white",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 18,
+    padding: 18,
     cursor: "pointer",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.08)",
-    transition: "0.2s",
-    color:"black",
+    boxShadow: "0 8px 20px rgba(0,0,0,0.06)",
+    transition: "all 0.2s ease",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: 10,
+    textAlign: "center",
+  },
+
+  iconWrap: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   icon: {
-    fontSize: 28,
-    marginBottom: 10,
+    fontSize: 24,
+  },
+
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#111827",
   },
 };
