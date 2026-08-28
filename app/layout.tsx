@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Ward Cosmetics",
-  description: "Ward Cosmetics Store Management",
+  description: "Ward Cosmetics Store Management System",
 };
 
 export default function RootLayout({

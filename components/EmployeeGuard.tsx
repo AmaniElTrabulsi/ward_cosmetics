@@ -9,48 +9,58 @@ export default function EmployeeGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+
   const [checking, setChecking] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const employee = localStorage.getItem("employee");
+    const stored = localStorage.getItem("employee");
 
-    if (!employee) {
+    if (!stored) {
       router.replace("/employee-login");
       return;
     }
 
-    setChecking(false);
+    try {
+      const employee = JSON.parse(stored);
+
+      if (!employee?.id || !employee?.username) {
+        localStorage.removeItem("employee");
+        router.replace("/employee-login");
+        return;
+      }
+
+      setAuthorized(true);
+    } catch {
+      localStorage.removeItem("employee");
+      router.replace("/employee-login");
+    } finally {
+      setChecking(false);
+    }
   }, [router]);
 
   if (checking) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#f5f7fb",
-          color: "#111827",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        <div
-          style={{
-            background: "white",
-            padding: 30,
-            borderRadius: 20,
-            boxShadow: "0 10px 35px rgba(0,0,0,0.08)",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ fontSize: 32, marginBottom: 10 }}>🛍️</div>
-          <p style={{ margin: 0, fontWeight: 600 }}>
+      <div className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="w-full max-w-xs rounded-[26px] border border-border bg-white p-7 text-center shadow-md">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-sage text-xl">
+            🛍️
+          </div>
+
+          <p className="mt-4 text-sm font-bold text-foreground">
             Loading Ward Cosmetics...
+          </p>
+
+          <p className="mt-1 text-xs text-muted">
+            Checking your employee access
           </p>
         </div>
       </div>
     );
+  }
+
+  if (!authorized) {
+    return null;
   }
 
   return <>{children}</>;
