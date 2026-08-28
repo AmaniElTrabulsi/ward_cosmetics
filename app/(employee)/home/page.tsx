@@ -80,17 +80,33 @@ export default function HomePage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
 
-            {/* REGISTER */}
+            {/* =================================================
+                ORDERS
+            ================================================= */}
+
+            <HomeAction
+              icon="▤"
+              title="Orders"
+              description="View customer orders and prepare them for delivery."
+              onClick={() => router.push("/orders")}
+              primary
+            />
+
+            {/* =================================================
+                REGISTER
+            ================================================= */}
 
             <HomeAction
               icon="▣"
               title="Register"
               description="Scan products and complete customer sales."
               onClick={() => router.push("/register")}
-              primary
+              variant="green"
             />
 
-            {/* PRODUCTS */}
+            {/* =================================================
+                PRODUCTS
+            ================================================= */}
 
             <HomeAction
               icon="◫"
@@ -100,7 +116,9 @@ export default function HomePage() {
               variant="green"
             />
 
-            {/* ADD PRODUCT */}
+            {/* =================================================
+                ADD PRODUCT
+            ================================================= */}
 
             <HomeAction
               icon="+"
@@ -110,7 +128,9 @@ export default function HomePage() {
               variant="rose"
             />
 
-            {/* DASHBOARD */}
+            {/* =================================================
+                DASHBOARD
+            ================================================= */}
 
             <HomeAction
               icon="▦"

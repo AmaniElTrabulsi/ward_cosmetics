@@ -1,326 +1,1668 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
-function EmployeeIcon() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M5 20c.8-3.5 3.2-5.5 7-5.5s6.2 2 7 5.5" />
-    </svg>
-  );
-}
+// ============================================================
+// STORE SETTINGS
+// Change these later if needed.
+// ============================================================
 
-function ShoppingIcon() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 4h2l2.4 11.2a2 2 0 0 0 2 1.6h7.8a2 2 0 0 0 1.9-1.4L21 8H6" />
-      <circle cx="10" cy="20" r="1" />
-      <circle cx="18" cy="20" r="1" />
-    </svg>
-  );
-}
+const WHISH_NAME = "Hadi Dabbous";
+const WHISH_PHONE = "76 180 300";
 
-function ArrowIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M5 12h14" />
-      <path d="m13 6 6 6-6 6" />
-    </svg>
-  );
-}
+const DELIVERY_FEE = 2;
 
-function LogoIcon() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m21 8-9 5-9-5" />
-      <path d="m3 8 9-5 9 5v9l-9 5-9-5V8Z" />
-      <path d="M12 13v9" />
-    </svg>
-  );
-}
+// ============================================================
+// TYPES
+// ============================================================
 
-export default function AppPage() {
-  return (
-    <main className="relative min-h-[100svh] overflow-x-hidden bg-[#faf8f7] text-[#292425]">
+type Product = {
+  id: string;
+  brand: string | null;
+  name: string;
+  price: number;
+  stock_quantity: number;
+  image_url: string | null;
+  barcode: string | null;
+  created_at: string;
+};
 
-      {/* =====================================================
-          BACKGROUND
-      ===================================================== */}
+type CartItem = {
+  product: Product;
+  quantity: number;
+};
 
-      <div className="pointer-events-none absolute -left-24 -top-24 h-56 w-56 rounded-full bg-[#f2dce1]/50 blur-3xl sm:-left-32 sm:-top-32 sm:h-72 sm:w-72" />
+type PaymentMethod =
+  | "cash_on_delivery"
+  | "whish"
+  | "cash_at_store";
 
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-60 w-60 rounded-full bg-[#dfead9]/55 blur-3xl sm:-bottom-40 sm:-right-32 sm:h-80 sm:w-80" />
+// ============================================================
+// PAGE
+// ============================================================
 
-      <div className="pointer-events-none absolute left-1/2 top-[42%] h-32 w-32 -translate-x-1/2 rounded-full bg-white/70 blur-3xl sm:h-40 sm:w-40" />
+export default function ShopPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
 
-      {/* =====================================================
-          PAGE CONTAINER
-      ===================================================== */}
+  const [loading, setLoading] = useState(true);
+  const [placingOrder, setPlacingOrder] = useState(false);
 
-      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-6xl flex-col px-4 py-7 sm:px-8 sm:py-10 lg:py-12">
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-        {/* ===================================================
-            HEADER
-        =================================================== */}
+  // Search / filtering / sorting
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [sort, setSort] = useState("featured");
 
-        <header className="flex justify-center">
+  // Cart
+  const [cartOpen, setCartOpen] = useState(false);
 
+  // Checkout
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerCity, setCustomerCity] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethod>("cash_on_delivery");
+
+  const [whishReference, setWhishReference] =
+    useState("");
+
+  // ============================================================
+  // LOAD PRODUCTS
+  // ============================================================
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  async function loadProducts() {
+    setLoading(true);
+    setError("");
+
+    try {
+      // IMPORTANT:
+      // No stock filter here.
+      // This means OUT OF STOCK products are also displayed.
+
+      const { data, error: productsError } = await supabase
+        .from("products")
+        .select(
+          "id, brand, name, price, stock_quantity, image_url, barcode, created_at"
+        )
+        .order("created_at", {
+          ascending: false,
+        });
+
+      if (productsError) {
+        console.error(productsError);
+        setError("Unable to load products.");
+        return;
+      }
+
+      setProducts(data || []);
+    } catch (err) {
+      console.error(err);
+      setError("Something went wrong while loading products.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ============================================================
+  // CATEGORIES
+  // ============================================================
+
+  const categories = useMemo(() => {
+    const unique = new Set<string>();
+
+    products.forEach((product) => {
+      if (product.brand?.trim()) {
+        unique.add(product.brand.trim());
+      }
+    });
+
+    return Array.from(unique).sort((a, b) =>
+      a.localeCompare(b)
+    );
+  }, [products]);
+
+  // ============================================================
+  // FILTER + SEARCH + SORT
+  // ============================================================
+
+  const displayedProducts = useMemo(() => {
+    let result = [...products];
+
+    const searchValue = search.trim().toLowerCase();
+
+    if (searchValue) {
+      result = result.filter((product) => {
+        const name = product.name?.toLowerCase() || "";
+        const brand = product.brand?.toLowerCase() || "";
+        const barcode = product.barcode?.toLowerCase() || "";
+
+        return (
+          name.includes(searchValue) ||
+          brand.includes(searchValue) ||
+          barcode.includes(searchValue)
+        );
+      });
+    }
+
+    if (category !== "all") {
+      result = result.filter(
+        (product) => product.brand === category
+      );
+    }
+
+    switch (sort) {
+      case "price_low":
+        result.sort((a, b) => a.price - b.price);
+        break;
+
+      case "price_high":
+        result.sort((a, b) => b.price - a.price);
+        break;
+
+      case "name_az":
+        result.sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+        break;
+
+      case "name_za":
+        result.sort((a, b) =>
+          b.name.localeCompare(a.name)
+        );
+        break;
+
+      case "stock":
+        result.sort(
+          (a, b) =>
+            b.stock_quantity - a.stock_quantity
+        );
+        break;
+
+      case "featured":
+      default:
+        result.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+        );
+        break;
+    }
+
+    return result;
+  }, [products, search, category, sort]);
+
+  // ============================================================
+  // CART TOTALS
+  // ============================================================
+
+  const cartCount = useMemo(() => {
+    return cart.reduce(
+      (sum, item) => sum + item.quantity,
+      0
+    );
+  }, [cart]);
+
+  const subtotal = useMemo(() => {
+    return cart.reduce(
+      (sum, item) =>
+        sum + Number(item.product.price) * item.quantity,
+      0
+    );
+  }, [cart]);
+
+  const total = subtotal + DELIVERY_FEE;
+
+  // ============================================================
+  // ADD TO CART
+  // ============================================================
+
+  function addToCart(product: Product) {
+    setError("");
+    setSuccess("");
+
+    if (product.stock_quantity <= 0) {
+      setError("This product is currently out of stock.");
+      return;
+    }
+
+    setCart((current) => {
+      const existing = current.find(
+        (item) => item.product.id === product.id
+      );
+
+      if (existing) {
+        if (
+          existing.quantity >=
+          product.stock_quantity
+        ) {
+          return current;
+        }
+
+        return current.map((item) =>
+          item.product.id === product.id
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+              }
+            : item
+        );
+      }
+
+      return [
+        ...current,
+        {
+          product,
+          quantity: 1,
+        },
+      ];
+    });
+
+    setCartOpen(true);
+  }
+
+  // ============================================================
+  // CHANGE CART QUANTITY
+  // ============================================================
+
+  function increaseQuantity(productId: string) {
+    setCart((current) =>
+      current.map((item) => {
+        if (item.product.id !== productId) {
+          return item;
+        }
+
+        if (
+          item.quantity >=
+          item.product.stock_quantity
+        ) {
+          return item;
+        }
+
+        return {
+          ...item,
+          quantity: item.quantity + 1,
+        };
+      })
+    );
+  }
+
+  function decreaseQuantity(productId: string) {
+    setCart((current) =>
+      current
+        .map((item) => {
+          if (item.product.id !== productId) {
+            return item;
+          }
+
+          return {
+            ...item,
+            quantity: item.quantity - 1,
+          };
+        })
+        .filter((item) => item.quantity > 0)
+    );
+  }
+
+  function removeFromCart(productId: string) {
+    setCart((current) =>
+      current.filter(
+        (item) => item.product.id !== productId
+      )
+    );
+  }
+
+  // ============================================================
+  // CHECKOUT
+  // ============================================================
+
+  function openCheckout() {
+    if (cart.length === 0) {
+      setError("Your cart is empty.");
+      return;
+    }
+
+    setError("");
+    setCartOpen(false);
+    setCheckoutOpen(true);
+  }
+
+  // ============================================================
+  // PLACE ORDER
+  // ============================================================
+
+  async function placeOrder(
+    event: React.FormEvent
+  ) {
+    event.preventDefault();
+
+    setError("");
+    setSuccess("");
+
+    if (cart.length === 0) {
+      setError("Your cart is empty.");
+      return;
+    }
+
+    if (!customerName.trim()) {
+      setError("Please enter your name.");
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      setError("Please enter your phone number.");
+      return;
+    }
+
+    if (!customerCity.trim()) {
+      setError("Please enter your city.");
+      return;
+    }
+
+    if (!customerAddress.trim()) {
+      setError("Please enter your address.");
+      return;
+    }
+
+    if (
+      paymentMethod === "whish" &&
+      !whishReference.trim()
+    ) {
+      setError(
+        "Please enter your Whish transaction/reference number."
+      );
+      return;
+    }
+
+    setPlacingOrder(true);
+
+    try {
+      // Re-check stock before creating the order.
+      const productIds = cart.map(
+        (item) => item.product.id
+      );
+
+      const { data: currentProducts, error: stockError } =
+        await supabase
+          .from("products")
+          .select("id, name, price, stock_quantity")
+          .in("id", productIds);
+
+      if (stockError) {
+        console.error(stockError);
+        setError(
+          "Unable to verify product availability."
+        );
+        return;
+      }
+
+      for (const item of cart) {
+        const currentProduct =
+          currentProducts?.find(
+            (product) =>
+              product.id === item.product.id
+          );
+
+        if (!currentProduct) {
+          setError(
+            `${item.product.name} is no longer available.`
+          );
+          return;
+        }
+
+        if (
+          currentProduct.stock_quantity <
+          item.quantity
+        ) {
+          setError(
+            `Only ${currentProduct.stock_quantity} of ${item.product.name} are currently available.`
+          );
+          return;
+        }
+      }
+
+      // ========================================================
+      // PREPARE ITEMS
+      // ========================================================
+
+      const items = cart.map((item) => ({
+        product_id: item.product.id,
+        product_name: item.product.name,
+        quantity: item.quantity,
+        unit_price: Number(item.product.price),
+        total:
+          Number(item.product.price) *
+          item.quantity,
+      }));
+
+      // ========================================================
+      // PAYMENT METHOD
+      // ========================================================
+
+      let paymentMethodValue = "";
+
+      if (paymentMethod === "cash_on_delivery") {
+        paymentMethodValue = "Cash on Delivery";
+      }
+
+      if (paymentMethod === "whish") {
+        paymentMethodValue = "Whish";
+      }
+
+      if (paymentMethod === "cash_at_store") {
+        paymentMethodValue = "Cash at Store";
+      }
+
+      // Put the Whish reference into notes so it is
+      // available to employees without requiring a new DB column.
+      let finalNotes = notes.trim();
+
+      if (paymentMethod === "whish") {
+        const whishText =
+          `Whish transaction/reference: ${whishReference.trim()}`;
+
+        finalNotes = finalNotes
+          ? `${finalNotes}\n${whishText}`
+          : whishText;
+      }
+
+      // ========================================================
+      // CREATE ORDER
+      // ========================================================
+
+      const { data, error: orderError } =
+        await supabase.rpc(
+          "create_cosmetics_order",
+          {
+            p_customer_name:
+              customerName.trim(),
+
+            p_customer_phone:
+              customerPhone.trim(),
+
+            p_customer_city:
+              customerCity.trim(),
+
+            p_customer_address:
+              customerAddress.trim(),
+
+            p_notes: finalNotes || null,
+
+            p_payment_method:
+              paymentMethodValue,
+
+            p_subtotal: subtotal,
+
+            p_delivery_fee:
+              DELIVERY_FEE,
+
+            p_total: total,
+
+            p_items: items,
+          }
+        );
+
+      if (orderError) {
+        console.error(
+          "Create order error:",
+          orderError
+        );
+
+        throw new Error(
+          orderError.message ||
+            "Unable to create order."
+        );
+      }
+
+      console.log(
+        "Order created:",
+        data
+      );
+
+      // ========================================================
+      // SUCCESS
+      // ========================================================
+
+      setCart([]);
+      setCheckoutOpen(false);
+      setCartOpen(false);
+
+      setCustomerName("");
+      setCustomerPhone("");
+      setCustomerCity("");
+      setCustomerAddress("");
+      setNotes("");
+      setWhishReference("");
+      setPaymentMethod("cash_on_delivery");
+
+      setSuccess(
+        "Your order has been placed successfully!"
+      );
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (err) {
+      console.error("Order failed:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to place your order."
+      );
+    } finally {
+      setPlacingOrder(false);
+    }
+  }
+
+  // ============================================================
+  // FORMAT PRICE
+  // ============================================================
+
+  function formatPrice(value: number) {
+    return `$${Number(value).toFixed(2)}`;
+  }
+
+  // ============================================================
+  // LOADING
+  // ============================================================
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[#fbf8f7] px-5 py-12 text-[#342d2f]">
+        <div className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center">
           <div className="text-center">
-
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[20px] border border-[#ead9dc] bg-white text-[#9b5c69] shadow-[0_8px_25px_rgba(100,70,75,0.08)] sm:h-16 sm:w-16 sm:rounded-[22px]">
-              <LogoIcon />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl shadow-sm">
+              🛍️
             </div>
 
-            <p className="mt-4 text-[9px] font-extrabold uppercase tracking-[0.23em] text-[#9b5c69] sm:mt-5 sm:text-[10px]">
-              Ward Cosmetics
+            <p className="mt-5 text-sm font-extrabold">
+              Loading Ward Cosmetics
             </p>
 
-            <h1 className="mt-1 text-lg font-extrabold tracking-tight text-[#292425] sm:text-2xl">
-              Welcome
-            </h1>
+            <p className="mt-1 text-xs text-[#887c80]">
+              Preparing the shop...
+            </p>
 
+            <div className="mx-auto mt-5 h-1.5 w-24 overflow-hidden rounded-full bg-[#dfeeda]">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-[#b96070]" />
+            </div>
           </div>
+        </div>
+      </main>
+    );
+  }
 
-        </header>
+  // ============================================================
+  // PAGE
+  // ============================================================
 
-        {/* ===================================================
-            MAIN
-        =================================================== */}
+  return (
+    <main className="min-h-screen bg-[#fbf8f7] text-[#342d2f]">
 
-        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center py-9 sm:py-14">
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
-          {/* =================================================
-              INTRO
-          ================================================= */}
+      <header className="sticky top-0 z-40 border-b border-[#eadfe0] bg-[#fbf8f7]/95 backdrop-blur-xl">
+        <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-6 lg:px-8">
 
-          <div className="mb-7 text-center sm:mb-10">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#f5dfe4] px-3 py-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#b45b6c]" />
 
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[#e7dedb] bg-white/85 px-3 py-1.5 shadow-sm backdrop-blur-sm sm:px-3.5 sm:py-2">
-
-              <span className="h-1.5 w-1.5 rounded-full bg-[#9b5c69] sm:h-2 sm:w-2" />
-
-              <span className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#756a6c] sm:text-[10px] sm:tracking-[0.18em]">
-                Store Portal
+              <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[#9d4f60]">
+                Ward Cosmetics
               </span>
-
             </div>
 
-            <h2 className="mt-4 text-[28px] font-extrabold leading-[1.12] tracking-tight text-[#292425] sm:mt-5 sm:text-4xl lg:text-5xl">
-              How would you like
-              <br />
-              to continue?
-            </h2>
-
-            <p className="mx-auto mt-3 max-w-[330px] text-[13px] leading-5 text-[#776d6f] sm:mt-4 sm:max-w-xl sm:text-base sm:leading-6">
-              Choose how you'd like to access Ward Cosmetics.
-              Employees can manage the store, while customers
-              can browse and shop.
-            </p>
-
+            <h1 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
+              Shop
+            </h1>
           </div>
 
-          {/* =================================================
-              OPTIONS
-          ================================================= */}
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            className="relative flex h-12 items-center gap-2 rounded-2xl bg-[#b96070] px-4 text-sm font-extrabold text-white shadow-[0_8px_25px_rgba(185,96,112,0.20)] transition hover:-translate-y-0.5 hover:bg-[#a95263]"
+          >
+            <span>🛒</span>
 
-          <div className="grid w-full gap-4 sm:gap-5 md:grid-cols-2">
+            <span className="hidden sm:inline">
+              Cart
+            </span>
 
-            {/* =================================================
-                EMPLOYEE
-            ================================================= */}
-
-            <Link
-              href="/employee-login"
-              className="group relative min-h-[255px] overflow-hidden rounded-[26px] border border-[#e4d2d6] bg-[#f5e5e8] p-5 shadow-[0_10px_30px_rgba(120,75,85,0.08)] transition duration-300 hover:-translate-y-1 hover:border-[#d8b9c0] hover:shadow-[0_18px_40px_rgba(120,75,85,0.14)] active:scale-[0.985] sm:min-h-[300px] sm:rounded-[30px] sm:p-8"
-            >
-
-              {/* Decorative shapes */}
-
-              <div className="pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full bg-white/35 transition duration-500 group-hover:scale-110 sm:h-40 sm:w-40" />
-
-              <div className="pointer-events-none absolute -bottom-16 -left-10 h-32 w-32 rounded-full bg-[#e9ccd2]/50" />
-
-              <div className="relative flex h-full flex-col">
-
-                <div className="flex items-start justify-between">
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[17px] bg-white text-[#9b5c69] shadow-sm sm:h-14 sm:w-14 sm:rounded-2xl">
-                    <EmployeeIcon />
-                  </div>
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/75 text-[#9b5c69] transition duration-300 group-hover:translate-x-1 group-hover:bg-white sm:h-10 sm:w-10">
-                    <ArrowIcon />
-                  </div>
-
-                </div>
-
-                <div className="mt-auto pt-7 sm:pt-9">
-
-                  <div className="inline-flex rounded-full bg-white/65 px-2.5 py-1 sm:px-3">
-                    <span className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#9b5c69] sm:text-[9px] sm:tracking-[0.15em]">
-                      Staff access
-                    </span>
-                  </div>
-
-                  <h3 className="mt-2.5 text-xl font-extrabold tracking-tight text-[#754853] sm:mt-3 sm:text-2xl">
-                    Employee
-                  </h3>
-
-                  <p className="mt-1.5 max-w-sm text-[12px] leading-5 text-[#765f64] sm:mt-2 sm:text-sm sm:leading-6">
-                    Manage products, sales, inventory,
-                    barcode scanning and your store dashboard.
-                  </p>
-
-                  <div className="mt-5 flex min-h-[24px] items-center gap-2 text-xs font-extrabold text-[#9b5c69] sm:mt-7 sm:text-sm">
-                    Employee Login
-                    <span className="transition group-hover:translate-x-1">
-                      →
-                    </span>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </Link>
-
-            {/* =================================================
-                SHOPPING
-            ================================================= */}
-
-            <Link
-              href="/shop"
-              className="group relative min-h-[255px] overflow-hidden rounded-[26px] border border-[#d9e4d5] bg-[#eaf2e7] p-5 shadow-[0_10px_30px_rgba(70,95,70,0.07)] transition duration-300 hover:-translate-y-1 hover:border-[#c7d8c2] hover:shadow-[0_18px_40px_rgba(70,95,70,0.12)] active:scale-[0.985] sm:min-h-[300px] sm:rounded-[30px] sm:p-8"
-            >
-
-              {/* Decorative shapes */}
-
-              <div className="pointer-events-none absolute -right-14 -top-14 h-36 w-36 rounded-full bg-white/40 transition duration-500 group-hover:scale-110 sm:h-40 sm:w-40" />
-
-              <div className="pointer-events-none absolute -bottom-16 -left-10 h-32 w-32 rounded-full bg-[#d8e7d3]/60" />
-
-              <div className="relative flex h-full flex-col">
-
-                <div className="flex items-start justify-between">
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-[17px] bg-white text-[#687e62] shadow-sm sm:h-14 sm:w-14 sm:rounded-2xl">
-                    <ShoppingIcon />
-                  </div>
-
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/75 text-[#687e62] transition duration-300 group-hover:translate-x-1 group-hover:bg-white sm:h-10 sm:w-10">
-                    <ArrowIcon />
-                  </div>
-
-                </div>
-
-                <div className="mt-auto pt-7 sm:pt-9">
-
-                  <div className="inline-flex rounded-full bg-white/65 px-2.5 py-1 sm:px-3">
-                    <span className="text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#687e62] sm:text-[9px] sm:tracking-[0.15em]">
-                      Customer access
-                    </span>
-                  </div>
-
-                  <h3 className="mt-2.5 text-xl font-extrabold tracking-tight text-[#52644d] sm:mt-3 sm:text-2xl">
-                    Shopping
-                  </h3>
-
-                  <p className="mt-1.5 max-w-sm text-[12px] leading-5 text-[#63705f] sm:mt-2 sm:text-sm sm:leading-6">
-                    Browse Ward Cosmetics products and
-                    discover what is available to shop.
-                  </p>
-
-                  <div className="mt-5 flex min-h-[24px] items-center gap-2 text-xs font-extrabold text-[#687e62] sm:mt-7 sm:text-sm">
-                    Start Shopping
-                    <span className="transition group-hover:translate-x-1">
-                      →
-                    </span>
-                  </div>
-
-                </div>
-
-              </div>
-
-            </Link>
-
-          </div>
-
-          {/* =================================================
-              INFO
-          ================================================= */}
-
-          <div className="mt-6 flex flex-col items-center justify-center gap-2.5 text-center sm:mt-7 sm:flex-row sm:gap-6">
-
-            <div className="flex items-center gap-2 text-[10px] font-semibold text-[#8b8082] sm:text-[11px]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#9b5c69]" />
-              Secure employee access
-            </div>
-
-            <div className="hidden h-1 w-1 rounded-full bg-[#d1c8c9] sm:block" />
-
-            <div className="flex items-center gap-2 text-[10px] font-semibold text-[#8b8082] sm:text-[11px]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#82987c]" />
-              Easy shopping
-            </div>
-
-          </div>
+            {cartCount > 0 && (
+              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-white px-1.5 text-[10px] font-extrabold text-[#a95263]">
+                {cartCount}
+              </span>
+            )}
+          </button>
 
         </div>
+      </header>
 
-        {/* ===================================================
+      <div className="mx-auto max-w-7xl px-5 py-7 sm:px-6 sm:py-9 lg:px-8">
+
+        {/* ====================================================
+            SUCCESS
+        ==================================================== */}
+
+        {success && (
+          <div className="mb-6 rounded-[24px] border border-[#cfe0c9] bg-[#f1f8ef] p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#dfeeda] font-extrabold text-[#55704d]">
+                ✓
+              </div>
+
+              <div>
+                <p className="text-sm font-extrabold text-[#55704d]">
+                  Order placed
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[#71806d]">
+                  {success}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================
+            ERROR
+        ==================================================== */}
+
+        {error && (
+          <div className="mb-6 rounded-[24px] border border-[#ecd0d5] bg-[#fdf0f2] p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f5dfe4] font-extrabold text-[#a85566]">
+                !
+              </div>
+
+              <div>
+                <p className="text-sm font-extrabold text-[#9d4f60]">
+                  Something went wrong
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[#a76c76]">
+                  {error}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ====================================================
+            HERO
+        ==================================================== */}
+
+        <section className="relative overflow-hidden rounded-[32px] border border-[#eadfe0] bg-white p-6 shadow-[0_15px_50px_rgba(82,57,61,0.06)] sm:p-8">
+
+          <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#f5dfe4]/70 blur-2xl" />
+
+          <div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-[#dfeeda]/60 blur-2xl" />
+
+          <div className="relative max-w-2xl">
+
+            <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#a85566]">
+              Beauty & cosmetics
+            </span>
+
+            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[#342d2f] sm:text-4xl">
+              Find something you'll love.
+            </h2>
+
+            <p className="mt-3 max-w-xl text-sm leading-6 text-[#887c80]">
+              Browse our products, find your favorites,
+              and place your order directly through Ward
+              Cosmetics.
+            </p>
+
+          </div>
+
+        </section>
+
+        {/* ====================================================
+            SEARCH / FILTERS
+        ==================================================== */}
+
+        <section className="mt-6 rounded-[28px] border border-[#eadfe0] bg-white p-4 shadow-[0_10px_35px_rgba(82,57,61,0.05)] sm:p-5">
+
+          <div className="grid gap-3 lg:grid-cols-[1fr_220px_220px]">
+
+            {/* SEARCH */}
+
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base text-[#9d9194]">
+                ⌕
+              </span>
+
+              <input
+                type="search"
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+                placeholder="Search products, brands or barcode..."
+                className="w-full rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] py-3.5 pl-11 pr-4 text-sm font-medium outline-none transition placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:bg-white focus:ring-4 focus:ring-[#f5dfe4]"
+              />
+            </div>
+
+            {/* CATEGORY */}
+
+            <select
+              value={category}
+              onChange={(event) =>
+                setCategory(event.target.value)
+              }
+              className="rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] px-4 py-3.5 text-sm font-semibold text-[#4d4245] outline-none focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
+            >
+              <option value="all">
+                All brands
+              </option>
+
+              {categories.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
+
+            {/* SORT */}
+
+            <select
+              value={sort}
+              onChange={(event) =>
+                setSort(event.target.value)
+              }
+              className="rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] px-4 py-3.5 text-sm font-semibold text-[#4d4245] outline-none focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
+            >
+              <option value="featured">
+                Newest
+              </option>
+
+              <option value="price_low">
+                Price: Low to High
+              </option>
+
+              <option value="price_high">
+                Price: High to Low
+              </option>
+
+              <option value="name_az">
+                Name: A to Z
+              </option>
+
+              <option value="name_za">
+                Name: Z to A
+              </option>
+
+              <option value="stock">
+                Most Available
+              </option>
+            </select>
+
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+
+            <p className="text-xs font-semibold text-[#887c80]">
+              Showing{" "}
+              <span className="font-extrabold text-[#5c4f53]">
+                {displayedProducts.length}
+              </span>{" "}
+              of{" "}
+              <span className="font-extrabold text-[#5c4f53]">
+                {products.length}
+              </span>{" "}
+              products
+            </p>
+
+            {(search ||
+              category !== "all" ||
+              sort !== "featured") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setCategory("all");
+                  setSort("featured");
+                }}
+                className="text-xs font-extrabold text-[#a85566] hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+
+          </div>
+
+        </section>
+
+        {/* ====================================================
+            PRODUCTS
+        ==================================================== */}
+
+        {displayedProducts.length === 0 ? (
+          <section className="mt-6 rounded-[28px] border border-[#eadfe0] bg-white p-10 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl">
+              🔍
+            </div>
+
+            <h3 className="mt-5 text-lg font-extrabold">
+              No products found
+            </h3>
+
+            <p className="mt-2 text-sm text-[#887c80]">
+              Try a different search or filter.
+            </p>
+          </section>
+        ) : (
+          <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+
+            {displayedProducts.map((product) => {
+              const outOfStock =
+                product.stock_quantity <= 0;
+
+              return (
+                <article
+                  key={product.id}
+                  className="group overflow-hidden rounded-[28px] border border-[#eadfe0] bg-white shadow-[0_8px_30px_rgba(82,57,61,0.05)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(82,57,61,0.09)]"
+                >
+
+                  {/* IMAGE */}
+
+                  <div className="relative aspect-square overflow-hidden bg-[#f7f3f2]">
+
+                    {product.image_url ? (
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
+                          outOfStock
+                            ? "opacity-55 grayscale-[20%]"
+                            : ""
+                        }`}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <span className="text-5xl opacity-40">
+                          🛍️
+                        </span>
+                      </div>
+                    )}
+
+                    {/* STOCK BADGE */}
+
+                    <div className="absolute left-3 top-3">
+                      {outOfStock ? (
+                        <span className="rounded-full bg-[#342d2f]/90 px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-wide text-white">
+                          Out of stock
+                        </span>
+                      ) : product.stock_quantity <= 5 ? (
+                        <span className="rounded-full bg-[#fff1d9] px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-wide text-[#9a6a27]">
+                          Only {product.stock_quantity} left
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-[#e9f4e6] px-3 py-1.5 text-[9px] font-extrabold uppercase tracking-wide text-[#55704d]">
+                          In stock
+                        </span>
+                      )}
+                    </div>
+
+                  </div>
+
+                  {/* CONTENT */}
+
+                  <div className="p-5">
+
+                    {product.brand && (
+                      <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#a85566]">
+                        {product.brand}
+                      </p>
+                    )}
+
+                    <h3 className="mt-1.5 line-clamp-2 min-h-[44px] text-sm font-extrabold leading-5 text-[#3b3335]">
+                      {product.name}
+                    </h3>
+
+                    <div className="mt-4 flex items-end justify-between gap-3">
+
+                      <div>
+                        <p className="text-lg font-extrabold text-[#a85566]">
+                          {formatPrice(product.price)}
+                        </p>
+
+                        {!outOfStock && (
+                          <p className="mt-0.5 text-[10px] text-[#9b8e91]">
+                            {product.stock_quantity} available
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={outOfStock}
+                        onClick={() =>
+                          addToCart(product)
+                        }
+                        className={`flex h-11 items-center justify-center rounded-2xl px-4 text-xs font-extrabold transition ${
+                          outOfStock
+                            ? "cursor-not-allowed bg-[#eee9e9] text-[#aaa0a2]"
+                            : "bg-[#b96070] text-white shadow-[0_7px_18px_rgba(185,96,112,0.18)] hover:-translate-y-0.5 hover:bg-[#a95263]"
+                        }`}
+                      >
+                        {outOfStock
+                          ? "Unavailable"
+                          : "Add to cart"}
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                </article>
+              );
+            })}
+
+          </section>
+        )}
+
+        {/* ====================================================
             FOOTER
-        =================================================== */}
+        ==================================================== */}
 
-        <footer className="pt-5 text-center sm:pt-6">
+        <footer className="py-12 text-center">
 
-          <p className="text-[9px] font-extrabold uppercase tracking-[0.17em] text-[#9d9395] sm:text-[10px]">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#9b8e91]">
             Ward Cosmetics
           </p>
 
-          <p className="mt-1 text-[9px] text-[#b0a7a9] sm:text-[10px]">
-            Store Management & Shopping
+          <p className="mt-1 text-[10px] text-[#b0a5a7]">
+            Beauty • Care • Confidence
           </p>
 
         </footer>
 
       </div>
+
+      {/* ======================================================
+          CART DRAWER
+      ====================================================== */}
+
+      {cartOpen && (
+        <div
+          className="fixed inset-0 z-[100] bg-[#29302b]/30 backdrop-blur-[3px]"
+          onClick={() => setCartOpen(false)}
+        >
+          <aside
+            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-[#fbf8f7] shadow-[-15px_0_50px_rgba(60,70,62,0.14)]"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+
+            {/* CART HEADER */}
+
+            <div className="flex items-center justify-between border-b border-[#eadfe0] px-5 py-5">
+              <div>
+                <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
+                  Your selection
+                </p>
+
+                <h2 className="mt-1 text-xl font-extrabold">
+                  Shopping cart
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setCartOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl text-[#705f63] shadow-sm"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* CART CONTENT */}
+
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+
+              {cart.length === 0 ? (
+                <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl">
+                    🛒
+                  </div>
+
+                  <h3 className="mt-5 text-lg font-extrabold">
+                    Your cart is empty
+                  </h3>
+
+                  <p className="mt-2 max-w-xs text-xs leading-5 text-[#887c80]">
+                    Add some products to get started.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+
+                  {cart.map((item) => (
+                    <div
+                      key={item.product.id}
+                      className="rounded-[22px] border border-[#eadfe0] bg-white p-3"
+                    >
+                      <div className="flex gap-3">
+
+                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[16px] bg-[#f7f3f2]">
+                          {item.product.image_url ? (
+                            <img
+                              src={item.product.image_url}
+                              alt={item.product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-xl">
+                              🛍️
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+
+                          {item.product.brand && (
+                            <p className="text-[8px] font-extrabold uppercase tracking-wide text-[#a85566]">
+                              {item.product.brand}
+                            </p>
+                          )}
+
+                          <p className="mt-1 line-clamp-2 text-xs font-extrabold leading-5">
+                            {item.product.name}
+                          </p>
+
+                          <p className="mt-1 text-sm font-extrabold text-[#a85566]">
+                            {formatPrice(
+                              item.product.price
+                            )}
+                          </p>
+
+                          <div className="mt-2 flex items-center justify-between">
+
+                            <div className="flex items-center rounded-xl bg-[#f7f3f2] p-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  decreaseQuantity(
+                                    item.product.id
+                                  )
+                                }
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-sm font-extrabold shadow-sm"
+                              >
+                                −
+                              </button>
+
+                              <span className="w-8 text-center text-xs font-extrabold">
+                                {item.quantity}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  increaseQuantity(
+                                    item.product.id
+                                  )
+                                }
+                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-sm font-extrabold shadow-sm"
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeFromCart(
+                                  item.product.id
+                                )
+                              }
+                              className="text-[10px] font-extrabold text-[#a85566] hover:underline"
+                            >
+                              Remove
+                            </button>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+                    </div>
+                  ))}
+
+                </div>
+              )}
+
+            </div>
+
+            {/* CART FOOTER */}
+
+            {cart.length > 0 && (
+              <div className="border-t border-[#eadfe0] bg-white p-5">
+
+                <div className="space-y-2 text-xs">
+
+                  <div className="flex justify-between text-[#887c80]">
+                    <span>Subtotal</span>
+                    <span className="font-bold text-[#4d4245]">
+                      {formatPrice(subtotal)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-[#887c80]">
+                    <span>Delivery</span>
+                    <span className="font-bold text-[#4d4245]">
+                      {formatPrice(
+                        DELIVERY_FEE
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="my-3 border-t border-[#eee6e7]" />
+
+                  <div className="flex justify-between">
+                    <span className="text-sm font-extrabold">
+                      Total
+                    </span>
+
+                    <span className="text-lg font-extrabold text-[#a85566]">
+                      {formatPrice(total)}
+                    </span>
+                  </div>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={openCheckout}
+                  className="mt-5 w-full rounded-[18px] bg-[#b96070] px-4 py-4 text-sm font-extrabold text-white shadow-[0_10px_25px_rgba(185,96,112,0.20)] transition hover:bg-[#a95263]"
+                >
+                  Continue to checkout →
+                </button>
+
+              </div>
+            )}
+
+          </aside>
+        </div>
+      )}
+
+      {/* ======================================================
+          CHECKOUT MODAL
+      ====================================================== */}
+
+      {checkoutOpen && (
+        <div
+          className="fixed inset-0 z-[110] overflow-y-auto bg-[#29302b]/35 px-4 py-6 backdrop-blur-[4px] sm:px-6"
+          onClick={() => {
+            if (!placingOrder) {
+              setCheckoutOpen(false);
+            }
+          }}
+        >
+
+          <div className="flex min-h-full items-center justify-center">
+
+            <div
+              className="w-full max-w-2xl overflow-hidden rounded-[30px] border border-[#eadfe0] bg-[#fbf8f7] shadow-[0_25px_80px_rgba(60,50,53,0.20)]"
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+            >
+
+              {/* CHECKOUT HEADER */}
+
+              <div className="border-b border-[#eadfe0] bg-white px-5 py-5 sm:px-7">
+
+                <div className="flex items-center justify-between">
+
+                  <div>
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
+                      Almost there
+                    </p>
+
+                    <h2 className="mt-1 text-xl font-extrabold">
+                      Checkout
+                    </h2>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={placingOrder}
+                    onClick={() =>
+                      setCheckoutOpen(false)
+                    }
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f3f2] text-xl text-[#705f63]"
+                  >
+                    ×
+                  </button>
+
+                </div>
+
+              </div>
+
+              {/* CHECKOUT BODY */}
+
+              <form
+                onSubmit={placeOrder}
+                className="space-y-6 p-5 sm:p-7"
+              >
+
+                {/* CUSTOMER INFORMATION */}
+
+                <section>
+
+                  <div className="mb-4">
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
+                      Customer information
+                    </p>
+
+                    <h3 className="mt-1 text-base font-extrabold">
+                      Where should we deliver?
+                    </h3>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+
+                    <CheckoutInput
+                      label="Full name"
+                      value={customerName}
+                      onChange={setCustomerName}
+                      placeholder="Your name"
+                    />
+
+                    <CheckoutInput
+                      label="Phone number"
+                      value={customerPhone}
+                      onChange={setCustomerPhone}
+                      placeholder="Your phone number"
+                      type="tel"
+                    />
+
+                    <CheckoutInput
+                      label="City"
+                      value={customerCity}
+                      onChange={setCustomerCity}
+                      placeholder="Your city"
+                    />
+
+                    <CheckoutInput
+                      label="Address"
+                      value={customerAddress}
+                      onChange={setCustomerAddress}
+                      placeholder="Street / area / building"
+                    />
+
+                  </div>
+
+                </section>
+
+                {/* PAYMENT */}
+
+                <section>
+
+                  <div className="mb-4">
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
+                      Payment
+                    </p>
+
+                    <h3 className="mt-1 text-base font-extrabold">
+                      Choose how you'd like to pay
+                    </h3>
+                  </div>
+
+                  <div className="space-y-3">
+
+                    {/* CASH DELIVERY */}
+
+                    <PaymentOption
+                      selected={
+                        paymentMethod ===
+                        "cash_on_delivery"
+                      }
+                      onClick={() =>
+                        setPaymentMethod(
+                          "cash_on_delivery"
+                        )
+                      }
+                      title="Cash on Delivery"
+                      description="Pay the delivery driver when your order arrives."
+                      icon="💵"
+                    />
+
+                    {/* WHISH */}
+
+                    <PaymentOption
+                      selected={
+                        paymentMethod === "whish"
+                      }
+                      onClick={() =>
+                        setPaymentMethod("whish")
+                      }
+                      title="Whish"
+                      description={`Send the payment to ${WHISH_NAME} — ${WHISH_PHONE}.`}
+                      icon="📱"
+                    />
+
+                    {/* STORE */}
+
+                    <PaymentOption
+                      selected={
+                        paymentMethod ===
+                        "cash_at_store"
+                      }
+                      onClick={() =>
+                        setPaymentMethod(
+                          "cash_at_store"
+                        )
+                      }
+                      title="Cash at Store"
+                      description="Pay cash when you come to the store and collect your order."
+                      icon="🏪"
+                    />
+
+                  </div>
+
+                  {/* WHISH INSTRUCTIONS */}
+
+                  {paymentMethod === "whish" && (
+                    <div className="mt-4 rounded-[22px] border border-[#e8d2d7] bg-[#fff5f6] p-4">
+
+                      <p className="text-xs font-extrabold text-[#9d4f60]">
+                        Whish payment instructions
+                      </p>
+
+                      <div className="mt-3 rounded-[16px] bg-white p-4">
+
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[#9b8e91]">
+                          Send payment to
+                        </p>
+
+                        <p className="mt-1 text-sm font-extrabold text-[#342d2f]">
+                          {WHISH_NAME}
+                        </p>
+
+                        <p className="mt-0.5 text-base font-extrabold text-[#a85566]">
+                          {WHISH_PHONE}
+                        </p>
+
+                        <p className="mt-3 text-xs leading-5 text-[#806d70]">
+                          Send{" "}
+                          <strong>
+                            {formatPrice(total)}
+                          </strong>{" "}
+                          through Whish, then enter your
+                          transaction/reference number below.
+                        </p>
+
+                      </div>
+
+                      <div className="mt-4">
+
+                        <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
+                          Whish transaction/reference number
+                        </label>
+
+                        <input
+                          type="text"
+                          value={whishReference}
+                          onChange={(event) =>
+                            setWhishReference(
+                              event.target.value
+                            )
+                          }
+                          placeholder="Enter transaction number"
+                          className="w-full rounded-[17px] border border-[#e7dddd] bg-white px-4 py-3.5 text-sm font-medium outline-none placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
+                        />
+
+                      </div>
+
+                    </div>
+                  )}
+
+                </section>
+
+                {/* NOTES */}
+
+                <section>
+
+                  <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
+                    Notes{" "}
+                    <span className="font-medium text-[#aaa0a2]">
+                      (optional)
+                    </span>
+                  </label>
+
+                  <textarea
+                    value={notes}
+                    onChange={(event) =>
+                      setNotes(event.target.value)
+                    }
+                    rows={3}
+                    placeholder="Anything we should know about your order?"
+                    className="w-full resize-none rounded-[18px] border border-[#e7dddd] bg-white px-4 py-3.5 text-sm font-medium outline-none placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
+                  />
+
+                </section>
+
+                {/* ORDER SUMMARY */}
+
+                <section className="rounded-[24px] border border-[#dce7de] bg-[#f3f8f1] p-5">
+
+                  <div className="flex items-center justify-between">
+
+                    <div>
+                      <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#55704d]">
+                        Order summary
+                      </p>
+
+                      <p className="mt-1 text-xs text-[#71806d]">
+                        {cartCount}{" "}
+                        {cartCount === 1
+                          ? "item"
+                          : "items"}
+                      </p>
+                    </div>
+
+                    <p className="text-xl font-extrabold text-[#55704d]">
+                      {formatPrice(total)}
+                    </p>
+
+                  </div>
+
+                  <div className="mt-4 space-y-2 border-t border-[#dce7de] pt-4 text-xs">
+
+                    <div className="flex justify-between text-[#71806d]">
+                      <span>Subtotal</span>
+                      <span className="font-bold">
+                        {formatPrice(subtotal)}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-[#71806d]">
+                      <span>Delivery</span>
+                      <span className="font-bold">
+                        {formatPrice(
+                          DELIVERY_FEE
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between pt-2 text-sm font-extrabold text-[#55704d]">
+                      <span>Total</span>
+                      <span>
+                        {formatPrice(total)}
+                      </span>
+                    </div>
+
+                  </div>
+
+                </section>
+
+                {/* FORM ERROR */}
+
+                {error && (
+                  <div className="rounded-[18px] border border-[#ecd0d5] bg-[#fdf0f2] px-4 py-3">
+                    <p className="text-xs font-extrabold text-[#9d4f60]">
+                      {error}
+                    </p>
+                  </div>
+                )}
+
+                {/* SUBMIT */}
+
+                <button
+                  type="submit"
+                  disabled={placingOrder}
+                  className="w-full rounded-[19px] bg-[#b96070] px-4 py-4 text-sm font-extrabold text-white shadow-[0_10px_25px_rgba(185,96,112,0.20)] transition hover:-translate-y-0.5 hover:bg-[#a95263] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {placingOrder ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      Placing order...
+                    </span>
+                  ) : (
+                    `Place order • ${formatPrice(total)}`
+                  )}
+                </button>
+
+                <p className="text-center text-[10px] leading-4 text-[#9b8e91]">
+                  By placing your order, you confirm that
+                  the information provided is correct.
+                </p>
+
+              </form>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
     </main>
+  );
+}
+
+// ============================================================
+// CHECKOUT INPUT
+// ============================================================
+
+function CheckoutInput({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
+        {label}
+      </label>
+
+      <input
+        type={type}
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        placeholder={placeholder}
+        className="w-full rounded-[17px] border border-[#e7dddd] bg-white px-4 py-3.5 text-sm font-medium text-[#3b3335] outline-none placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
+      />
+    </div>
+  );
+}
+
+// ============================================================
+// PAYMENT OPTION
+// ============================================================
+
+function PaymentOption({
+  selected,
+  onClick,
+  title,
+  description,
+  icon,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  title: string;
+  description: string;
+  icon: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-[20px] border p-4 text-left transition ${
+        selected
+          ? "border-[#d49aa5] bg-[#fff5f6] shadow-[0_5px_18px_rgba(155,102,112,0.07)]"
+          : "border-[#e7dddd] bg-white hover:border-[#d9c6c9]"
+      }`}
+    >
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg ${
+          selected
+            ? "bg-[#f5dfe4]"
+            : "bg-[#f3f8f1]"
+        }`}
+      >
+        {icon}
+      </div>
+
+      <div className="min-w-0 flex-1">
+
+        <p
+          className={`text-sm font-extrabold ${
+            selected
+              ? "text-[#9d4f60]"
+              : "text-[#3b3335]"
+          }`}
+        >
+          {title}
+        </p>
+
+        <p className="mt-0.5 text-[10px] leading-4 text-[#887c80]">
+          {description}
+        </p>
+
+      </div>
+
+      <div
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+          selected
+            ? "border-[#b96070] bg-[#b96070] text-[10px] text-white"
+            : "border-[#d9cdcf]"
+        }`}
+      >
+        {selected && "✓"}
+      </div>
+
+    </button>
   );
 }
