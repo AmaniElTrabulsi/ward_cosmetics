@@ -31,275 +31,670 @@ export default function HomePage() {
   }
 
   if (!employee) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f8faf7] text-[#53604f]">
-        Loading...
-      </main>
-    );
+    return null;
   }
 
   const menuItems = [
-   {
-  icon: "🧴",
-  title: "Products",
-  description: "Search products or scan a barcode",
-  path: "/products",
-  iconBackground: "#e3eddf",
-},
+    {
+      icon: "🔍",
+      title: "Products",
+      description: "Search products and scan barcodes",
+      path: "/products",
+      iconBackground: "#f5e4e8",
+    },
     {
       icon: "🧾",
       title: "Register",
-      description: "Process a customer sale",
+      description: "Sell products and process sales",
       path: "/register",
-      background: "#f8e9ed",
+      iconBackground: "#e5f0e1",
+    },
+    {
+      icon: "📦",
+      title: "Add Product",
+      description: "Add a new product to inventory",
+      path: "/add-product",
+      iconBackground: "#f9e8eb",
     },
     {
       icon: "📊",
       title: "Dashboard",
-      description: "View store performance",
+      description: "View today's store performance",
       path: "/dashboard",
-      background: "#e7efe4",
+      iconBackground: "#e8f0e5",
     },
   ];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#faf9f7] text-[#292d29]">
-      {/* BACKGROUND DECORATION */}
-      <div className="pointer-events-none fixed -right-32 -top-32 h-80 w-80 rounded-full bg-[#e7d0d6]/40 blur-3xl" />
-      <div className="pointer-events-none fixed -bottom-32 -left-32 h-80 w-80 rounded-full bg-[#dbe8d6]/50 blur-3xl" />
+    <main style={styles.page}>
+      <div style={styles.topGlow} />
+      <div style={styles.bottomGlow} />
 
       {/* HEADER */}
-      <header className="relative z-50 border-b border-[#e7e2df] bg-[#faf9f7]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-[68px] w-full max-w-6xl items-center justify-between px-4 sm:h-[76px] sm:px-6 lg:px-8">
-          
-          {/* BRAND */}
-          <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[#dfeada] text-lg shadow-sm sm:h-11 sm:w-11 sm:text-xl">
-              🛍️
-            </div>
-
-            <div className="min-w-0">
-              <p className="truncate text-[10px] font-extrabold tracking-[0.18em] text-[#a45d6b] sm:text-[11px]">
-                WARD COSMETICS
-              </p>
-
-              <p className="mt-0.5 text-[10px] text-[#8d928c] sm:text-[11px]">
-                Store Management
-              </p>
-            </div>
+      <header style={styles.header}>
+        <div style={styles.brandArea}>
+          <div style={styles.logo}>
+            🛍️
           </div>
 
-          {/* PROFILE */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 rounded-full border border-[#e5dfdc] bg-white py-1.5 pl-1.5 pr-2.5 shadow-sm transition active:scale-95 sm:gap-2.5 sm:pr-3"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#52634e] text-xs font-bold text-white sm:h-9 sm:w-9">
-                {(employee.username || "E")
-                  .charAt(0)
-                  .toUpperCase()}
+          <div style={styles.brandTextArea}>
+            <div style={styles.brand}>
+              WARD COSMETICS
+            </div>
+
+            <div style={styles.storeText}>
+              Store Management
+            </div>
+          </div>
+        </div>
+
+        {/* PROFILE */}
+        <div style={styles.profileWrapper}>
+          <button
+            type="button"
+            onClick={() =>
+              setMenuOpen(!menuOpen)
+            }
+            style={styles.profileButton}
+          >
+            <div style={styles.avatar}>
+              {(employee.username || "E")
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+
+            <span style={styles.profileName}>
+              {employee.username}
+            </span>
+
+            <span style={styles.chevron}>
+              {menuOpen ? "▲" : "▼"}
+            </span>
+          </button>
+
+          {menuOpen && (
+            <div style={styles.menu}>
+              <div style={styles.menuUser}>
+                <div style={styles.menuUserName}>
+                  {employee.username}
+                </div>
+
+                <div style={styles.menuUserRole}>
+                  Employee
+                </div>
               </div>
 
-              <span className="hidden max-w-[120px] truncate text-xs font-bold text-[#4e544e] sm:block">
-                {employee.username}
-              </span>
-
-              <span className="text-[8px] text-[#9a9e99]">
-                {menuOpen ? "▲" : "▼"}
-              </span>
-            </button>
-
-            {menuOpen && (
-              <>
-                {/* Mobile backdrop */}
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setMenuOpen(false)}
-                />
-
-                <div className="absolute right-0 top-[48px] z-50 w-52 overflow-hidden rounded-2xl border border-[#e6dfdd] bg-white p-2 shadow-[0_20px_50px_rgba(60,45,45,0.15)]">
-                  <div className="rounded-xl bg-[#f8f5f4] px-3 py-3">
-                    <p className="truncate text-sm font-bold text-[#303530]">
-                      {employee.username}
-                    </p>
-
-                    <p className="mt-0.5 text-[10px] text-[#969b95]">
-                      Employee
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={signOut}
-                    className="mt-1 flex w-full items-center gap-2 rounded-xl px-3 py-3 text-left text-xs font-bold text-[#a45d6b] transition hover:bg-[#fff1f3]"
-                  >
-                    <span className="text-base">↪</span>
-                    Sign Out
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+              <button
+                type="button"
+                onClick={signOut}
+                style={styles.signOutButton}
+              >
+                <span>↪</span>
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
-      {/* CONTENT */}
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-10 pt-5 sm:px-6 sm:pb-14 sm:pt-8 lg:px-8">
-
-        {/* HERO */}
-        <section className="relative overflow-hidden rounded-[26px] bg-[#52634e] shadow-[0_18px_45px_rgba(65,82,61,0.18)] sm:rounded-[32px]">
-          
-          {/* Decorative circles */}
-          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#a45d6b]/30" />
-          <div className="pointer-events-none absolute -bottom-28 -left-16 h-56 w-56 rounded-full bg-[#dce8d7]/20" />
-
-          <div className="relative px-5 py-8 sm:px-8 sm:py-10 lg:px-12 lg:py-12">
-            
-            <div className="max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-[9px] font-bold uppercase tracking-[0.15em] text-[#edf4ea] sm:text-[10px]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#e7b9c2]" />
-                Employee Workspace
-              </div>
-
-              <h1 className="mt-5 text-[30px] font-extrabold leading-[1.08] tracking-tight text-white sm:text-4xl lg:text-5xl">
-                Hello,{" "}
-                <span className="text-[#e8bdc5]">
-                  {employee.username}
-                </span>
-                !
-              </h1>
-
-              <p className="mt-4 max-w-xl text-sm leading-6 text-[#dbe5d8] sm:text-[15px]">
-                Everything you need to manage Ward
-                Cosmetics is right here.
-              </p>
-
-              <div className="mt-6 flex items-center gap-2 text-[10px] font-semibold text-[#dbe5d8] sm:text-xs">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10">
-                  ✓
-                </span>
-                Ready to manage your store
-              </div>
-            </div>
-
-            {/* Desktop decoration */}
-            <div className="absolute bottom-8 right-8 hidden h-24 w-24 items-center justify-center rounded-[28px] bg-white/10 text-4xl lg:flex">
-              ✨
-            </div>
+      {/* HERO */}
+      <section style={styles.hero}>
+        <div style={styles.heroContent}>
+          <div style={styles.welcomeBadge}>
+            <span style={styles.badgeDot} />
+            Store Workspace
           </div>
-        </section>
 
-        {/* QUICK ACTIONS */}
-        <section className="mt-8 sm:mt-10">
-          <div className="mb-4">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#a45d6b] sm:text-[10px]">
-              Workspace
-            </p>
+          <h1 style={styles.heroTitle}>
+            Hello,{" "}
+            <span style={styles.heroAccent}>
+              {employee.username}
+            </span>
+            !
+          </h1>
 
-            <h2 className="mt-1 text-[23px] font-extrabold tracking-tight text-[#303530] sm:text-2xl">
+          <p style={styles.heroText}>
+            Everything you need to manage Ward
+            Cosmetics, all in one simple place.
+          </p>
+        </div>
+
+        <div style={styles.heroDecoration}>
+          <div style={styles.heroDecorationInner}>
+            ✨
+          </div>
+        </div>
+      </section>
+
+      {/* QUICK ACTIONS */}
+      <section style={styles.actionsSection}>
+        <div style={styles.sectionHeader}>
+          <div>
+            <div style={styles.sectionEyebrow}>
+              WORKSPACE
+            </div>
+
+            <h2 style={styles.sectionTitle}>
               Quick Actions
             </h2>
 
-            <p className="mt-1 text-xs text-[#8b9189] sm:text-sm">
+            <p style={styles.sectionSubtitle}>
               Choose what you want to do
             </p>
           </div>
+        </div>
 
-          {/* MOBILE = 1 COLUMN
-              TABLET/DESKTOP = 2 COLUMNS */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-            {menuItems.map((item) => (
-              <button
-                key={item.path}
-                type="button"
-                onClick={() => router.push(item.path)}
-                className="group flex min-h-[92px] w-full items-center gap-4 rounded-[22px] border border-[#e8e3e0] bg-white p-4 text-left shadow-[0_5px_22px_rgba(70,55,55,0.045)] transition duration-200 hover:-translate-y-0.5 hover:border-[#d8c7ca] hover:shadow-[0_12px_30px_rgba(70,55,55,0.09)] active:scale-[0.98] sm:min-h-[105px] sm:rounded-[25px] sm:p-5"
+        <div style={styles.grid}>
+          {menuItems.map((item) => (
+            <button
+              key={item.path}
+              type="button"
+              onClick={() =>
+                router.push(item.path)
+              }
+              style={styles.actionCard}
+            >
+              <div
+                style={{
+                  ...styles.actionIcon,
+                  background:
+                    item.iconBackground,
+                }}
               >
-                <div
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] text-2xl sm:h-16 sm:w-16 sm:rounded-[20px] sm:text-[26px]"
-                  style={{
-                    background: item.background,
-                  }}
-                >
-                  {item.icon}
-                </div>
+                {item.icon}
+              </div>
 
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-extrabold text-[#303530] sm:text-[15px]">
-                    {item.title}
-                  </h3>
+              <div style={styles.actionContent}>
+                <h3 style={styles.actionTitle}>
+                  {item.title}
+                </h3>
 
-                  <p className="mt-1 text-[11px] leading-5 text-[#858b84] sm:text-xs">
-                    {item.description}
-                  </p>
-                </div>
+                <p style={styles.actionDescription}>
+                  {item.description}
+                </p>
+              </div>
 
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f4f6f2] text-[#73806f] transition group-hover:bg-[#f5e5e8] group-hover:text-[#a45d6b]">
-                  →
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
+              <div style={styles.arrow}>
+                →
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
 
-        {/* STORE TIP */}
-        <section className="mt-7 rounded-[22px] border border-[#e3e9df] bg-[#eaf1e7] p-4 sm:mt-8 sm:rounded-[26px] sm:p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] bg-white text-lg shadow-sm">
-              💡
-            </div>
+      {/* INFO CARD */}
+      <section style={styles.infoCard}>
+        <div style={styles.infoIcon}>
+          💡
+        </div>
 
-            <div className="min-w-0">
-              <h3 className="text-xs font-extrabold text-[#4f5e4b] sm:text-sm">
-                Keep your store moving
-              </h3>
+        <div style={styles.infoContent}>
+          <h3 style={styles.infoTitle}>
+            Keep your store moving
+          </h3>
 
-              <p className="mt-1 text-[11px] leading-5 text-[#71806c] sm:text-xs sm:leading-5">
-                Search products, scan barcodes,
-                process sales, and monitor your
-                store performance from one place.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* MINI FEATURES */}
-        <section className="mt-6 grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="rounded-[18px] border border-[#e9e4e1] bg-white p-3 text-center sm:rounded-[20px] sm:p-4">
-            <div className="text-lg sm:text-xl">🔎</div>
-            <p className="mt-2 text-[9px] font-bold text-[#646b63] sm:text-[10px]">
-              Search
-            </p>
-          </div>
-
-          <div className="rounded-[18px] border border-[#e9e4e1] bg-white p-3 text-center sm:rounded-[20px] sm:p-4">
-            <div className="text-lg sm:text-xl">📦</div>
-            <p className="mt-2 text-[9px] font-bold text-[#646b63] sm:text-[10px]">
-              Inventory
-            </p>
-          </div>
-
-          <div className="rounded-[18px] border border-[#e9e4e1] bg-white p-3 text-center sm:rounded-[20px] sm:p-4">
-            <div className="text-lg sm:text-xl">💳</div>
-            <p className="mt-2 text-[9px] font-bold text-[#646b63] sm:text-[10px]">
-              Sales
-            </p>
-          </div>
-        </section>
-
-        {/* FOOTER */}
-        <footer className="pb-2 pt-8 text-center">
-          <p className="text-[10px] font-bold text-[#8e938d] sm:text-[11px]">
-            Ward Cosmetics
+          <p style={styles.infoText}>
+            Search products, scan barcodes, add new
+            products, process sales, and monitor
+            your store from one place.
           </p>
+        </div>
+      </section>
 
-          <p className="mt-1 text-[9px] text-[#b0b3ae]">
-            Store Management System
-          </p>
-        </footer>
-      </div>
+      {/* FOOTER */}
+      <footer style={styles.footer}>
+        <div style={styles.footerBrand}>
+          WARD COSMETICS
+        </div>
+
+        <div style={styles.footerText}>
+          Store Management System
+        </div>
+      </footer>
     </main>
   );
 }
+
+const styles: any = {
+  page: {
+    minHeight: "100vh",
+    background:
+      "linear-gradient(145deg, #fbf8f7 0%, #f4f7f1 50%, #faf1f3 100%)",
+    padding: "20px 16px 32px",
+    color: "#292425",
+    fontFamily:
+      "Arial, Helvetica, sans-serif",
+    position: "relative",
+    overflow: "hidden",
+  },
+
+  topGlow: {
+    position: "absolute",
+    width: 360,
+    height: 360,
+    borderRadius: "50%",
+    background:
+      "rgba(164,93,107,0.08)",
+    top: -220,
+    right: -160,
+    pointerEvents: "none",
+  },
+
+  bottomGlow: {
+    position: "absolute",
+    width: 300,
+    height: 300,
+    borderRadius: "50%",
+    background:
+      "rgba(126,157,115,0.08)",
+    bottom: -200,
+    left: -160,
+    pointerEvents: "none",
+  },
+
+  header: {
+    width: "100%",
+    maxWidth: 1050,
+    margin: "0 auto",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    position: "relative",
+    zIndex: 20,
+  },
+
+  brandArea: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    minWidth: 0,
+  },
+
+  logo: {
+    width: 45,
+    height: 45,
+    minWidth: 45,
+    borderRadius: 15,
+    background:
+      "linear-gradient(135deg, #a45d6b, #bd7b87)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 21,
+    boxShadow:
+      "0 8px 22px rgba(164,93,107,0.20)",
+  },
+
+  brandTextArea: {
+    minWidth: 0,
+  },
+
+  brand: {
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: 1.5,
+    color: "#a45d6b",
+    whiteSpace: "nowrap",
+  },
+
+  storeText: {
+    fontSize: 11,
+    color: "#8d8888",
+    marginTop: 3,
+  },
+
+  profileWrapper: {
+    position: "relative",
+    flexShrink: 0,
+  },
+
+  profileButton: {
+    border:
+      "1px solid #e6dddd",
+    background:
+      "rgba(255,255,255,0.92)",
+    borderRadius: 15,
+    padding: "5px 8px 5px 5px",
+    display: "flex",
+    alignItems: "center",
+    gap: 7,
+    cursor: "pointer",
+    boxShadow:
+      "0 5px 18px rgba(60,40,40,0.06)",
+  },
+
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    background: "#536a4d",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+
+  profileName: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#51484a",
+    maxWidth: 100,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+
+  chevron: {
+    fontSize: 7,
+    color: "#9b9192",
+  },
+
+  menu: {
+    position: "absolute",
+    top: 46,
+    right: 0,
+    width: 205,
+    background: "white",
+    borderRadius: 17,
+    padding: 8,
+    boxShadow:
+      "0 18px 45px rgba(60,40,40,0.16)",
+    border: "1px solid #eee5e5",
+    zIndex: 50,
+  },
+
+  menuUser: {
+    padding: "10px 11px",
+    borderBottom:
+      "1px solid #f0e9e9",
+    marginBottom: 5,
+  },
+
+  menuUserName: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#292425",
+  },
+
+  menuUserRole: {
+    fontSize: 11,
+    color: "#9b9192",
+    marginTop: 3,
+  },
+
+  signOutButton: {
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    padding: 11,
+    borderRadius: 10,
+    display: "flex",
+    gap: 9,
+    alignItems: "center",
+    cursor: "pointer",
+    color: "#a45d6b",
+    fontSize: 13,
+    fontWeight: 600,
+    textAlign: "left",
+  },
+
+  hero: {
+    width: "100%",
+    maxWidth: 1050,
+    margin: "30px auto 35px",
+    background:
+      "linear-gradient(135deg, #3f5140 0%, #536a4d 55%, #647b5d 100%)",
+    borderRadius: 28,
+    padding: "30px 24px",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 20,
+    boxShadow:
+      "0 20px 45px rgba(65,85,65,0.18)",
+    position: "relative",
+    overflow: "hidden",
+  },
+
+  heroContent: {
+    position: "relative",
+    zIndex: 2,
+    minWidth: 0,
+  },
+
+  welcomeBadge: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "7px 11px",
+    borderRadius: 20,
+    background:
+      "rgba(255,255,255,0.12)",
+    color: "#e8efe5",
+    fontSize: 10,
+    fontWeight: 700,
+    marginBottom: 14,
+  },
+
+  badgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: "50%",
+    background: "#d899a4",
+  },
+
+  heroTitle: {
+    margin: 0,
+    fontSize: 32,
+    lineHeight: 1.12,
+    fontWeight: 800,
+    letterSpacing: -0.7,
+  },
+
+  heroAccent: {
+    color: "#e7b5bd",
+  },
+
+  heroText: {
+    color: "#dbe5d8",
+    fontSize: 13,
+    lineHeight: 1.6,
+    maxWidth: 520,
+    marginTop: 11,
+    marginBottom: 0,
+  },
+
+  heroDecoration: {
+    width: 82,
+    height: 82,
+    minWidth: 82,
+    borderRadius: 27,
+    background:
+      "rgba(255,255,255,0.09)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+
+  heroDecorationInner: {
+    width: 58,
+    height: 58,
+    borderRadius: 20,
+    background:
+      "rgba(255,255,255,0.10)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 27,
+  },
+
+  actionsSection: {
+    width: "100%",
+    maxWidth: 1050,
+    margin: "0 auto",
+    position: "relative",
+    zIndex: 2,
+  },
+
+  sectionHeader: {
+    marginBottom: 14,
+  },
+
+  sectionEyebrow: {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: 1.8,
+    color: "#a45d6b",
+    marginBottom: 4,
+  },
+
+  sectionTitle: {
+    margin: 0,
+    fontSize: 22,
+    fontWeight: 800,
+    color: "#293129",
+  },
+
+  sectionSubtitle: {
+    margin: "4px 0 0",
+    fontSize: 12,
+    color: "#8a8082",
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+  },
+
+  actionCard: {
+    width: "100%",
+    minWidth: 0,
+    border:
+      "1px solid #e8e0df",
+    background:
+      "rgba(255,255,255,0.92)",
+    borderRadius: 21,
+    padding: 15,
+    display: "flex",
+    alignItems: "center",
+    gap: 11,
+    cursor: "pointer",
+    textAlign: "left",
+    boxShadow:
+      "0 8px 25px rgba(70,50,50,0.05)",
+    transition:
+      "transform 0.2s ease, box-shadow 0.2s ease",
+  },
+
+  actionIcon: {
+    width: 48,
+    height: 48,
+    minWidth: 48,
+    borderRadius: 15,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 21,
+  },
+
+  actionContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+  actionTitle: {
+    margin: 0,
+    fontSize: 14,
+    fontWeight: 800,
+    color: "#303031",
+  },
+
+  actionDescription: {
+    margin: "4px 0 0",
+    fontSize: 10.5,
+    lineHeight: 1.4,
+    color: "#817779",
+  },
+
+  arrow: {
+    fontSize: 18,
+    color: "#a45d6b",
+    flexShrink: 0,
+  },
+
+  infoCard: {
+    width: "100%",
+    maxWidth: 1050,
+    margin: "22px auto 0",
+    padding: 16,
+    borderRadius: 20,
+    background:
+      "rgba(228,238,224,0.78)",
+    border:
+      "1px solid #d8e5d3",
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    position: "relative",
+    zIndex: 2,
+  },
+
+  infoIcon: {
+    width: 43,
+    height: 43,
+    minWidth: 43,
+    borderRadius: 14,
+    background: "#fff5f6",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 19,
+  },
+
+  infoContent: {
+    minWidth: 0,
+  },
+
+  infoTitle: {
+    margin: 0,
+    fontSize: 13,
+    fontWeight: 800,
+    color: "#3e4d3c",
+  },
+
+  infoText: {
+    margin: "4px 0 0",
+    color: "#697566",
+    fontSize: 11,
+    lineHeight: 1.5,
+  },
+
+  footer: {
+    width: "100%",
+    maxWidth: 1050,
+    margin: "28px auto 0",
+    textAlign: "center",
+    position: "relative",
+    zIndex: 2,
+  },
+
+  footerBrand: {
+    fontSize: 9,
+    fontWeight: 800,
+    letterSpacing: 1.5,
+    color: "#a45d6b",
+  },
+
+  footerText: {
+    marginTop: 3,
+    fontSize: 10,
+    color: "#a09697",
+  },
+};
