@@ -12,14 +12,14 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
+  async function login(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    if (loading) return;
 
     setError("");
 
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = email.trim();
 
     if (!cleanEmail || !password) {
       setError("Please enter your email and password.");
@@ -29,23 +29,15 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const { data, error: loginError } = await supabase
+      const { data, error: databaseError } = await supabase
         .from("admins")
         .select("*")
         .eq("email", cleanEmail)
-        .eq("password", password)
         .maybeSingle();
 
-      if (loginError) {
-        console.error(
-          "ADMIN LOGIN DATABASE ERROR:",
-          loginError
-        );
-
-        setError(
-          "Unable to connect to the owner account."
-        );
-
+      if (databaseError) {
+        console.error("ADMIN LOGIN ERROR:", databaseError);
+        setError("Unable to connect to the owner database.");
         return;
       }
 
@@ -54,64 +46,83 @@ export default function AdminLogin() {
         return;
       }
 
+      if (data.password !== password) {
+        setError("Invalid email or password.");
+        return;
+      }
+
+      /* =====================================================
+         DEVICE ID
+      ===================================================== */
+
       let deviceId = localStorage.getItem("device_id");
 
       if (!deviceId) {
         deviceId = crypto.randomUUID();
-
-        localStorage.setItem(
-          "device_id",
-          deviceId
-        );
+        localStorage.setItem("device_id", deviceId);
       }
 
-      if (!data.device_id) {
-        const { error: deviceError } =
-          await supabase
-            .from("admins")
-            .update({
-              device_id: deviceId,
-            })
-            .eq("id", data.id);
+      /* =====================================================
+         FIRST LOGIN → LOCK THIS DEVICE
+      ===================================================== */
 
-        if (deviceError) {
+      if (!data.device_id) {
+        const { error: updateError } = await supabase
+          .from("admins")
+          .update({
+            device_id: deviceId,
+          })
+          .eq("id", data.id);
+
+        if (updateError) {
           console.error(
-            "DEVICE AUTHORIZATION ERROR:",
-            deviceError
+            "DEVICE LOCK ERROR:",
+            updateError
           );
 
           setError(
-            "Could not authorize this device."
+            "We couldn't authorize this device. Please try again."
           );
 
           return;
         }
-
-        data.device_id = deviceId;
       }
+
+      /* =====================================================
+         WRONG DEVICE
+      ===================================================== */
 
       if (
         data.device_id &&
         data.device_id !== deviceId
       ) {
         setError(
-          "This device is not authorized to access the owner dashboard."
+          "This device is not authorized for the owner account."
         );
 
         return;
       }
 
+      /* =====================================================
+         SAVE ADMIN SESSION
+      ===================================================== */
+
       localStorage.setItem(
         "admin",
-        JSON.stringify(data)
+        JSON.stringify({
+          id: data.id,
+          email: data.email,
+          device_id: deviceId,
+        })
       );
 
+      /* =====================================================
+         GO TO OWNER DASHBOARD
+      ===================================================== */
+
       router.replace("/owner-dashboard");
-    } catch (error) {
-      console.error(
-        "ADMIN LOGIN ERROR:",
-        error
-      );
+    } catch (err) {
+      console.error("OWNER LOGIN ERROR:", err);
 
       setError(
         "Something went wrong. Please try again."
@@ -122,216 +133,202 @@ export default function AdminLogin() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-5 py-8">
-
-      <div className="mx-auto flex min-h-[90vh] max-w-md items-center justify-center">
-
+    <main className="min-h-screen bg-[#f8f5f4] px-5 py-8 text-[#292425]">
+      <div className="mx-auto flex min-h-[92vh] max-w-md items-center justify-center">
         <div className="w-full">
 
-          {/* HEADER */}
+          {/* =================================================
+              BRAND / HEADER
+          ================================================= */}
 
           <div className="mb-8 text-center">
 
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#ead5d9] bg-[var(--rose-light)] shadow-sm">
-              <span className="text-xl font-bold text-[var(--rose-dark)]">
-                O
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] border border-[#e8d6da] bg-[#f5e4e7] shadow-sm">
+              <span className="text-2xl text-[#9b5c69]">
+                ♛
               </span>
             </div>
 
-            <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-[var(--rose-dark)]">
+            <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.22em] text-[#9b5c69]">
               Ward Cosmetics
             </p>
 
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-[var(--text)]">
-              Owner Dashboard
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-[#292425]">
+              Owner Login
             </h1>
 
-            <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
-              Sign in to manage your store.
+            <p className="mx-auto mt-2 max-w-xs text-sm leading-6 text-[#776d6f]">
+              Sign in to access your store's management
+              dashboard.
             </p>
-
           </div>
 
-          {/* LOGIN CARD */}
+          {/* =================================================
+              LOGIN CARD
+          ================================================= */}
 
-          <div className="overflow-hidden rounded-[30px] border border-[var(--border)] bg-white shadow-[0_20px_60px_rgba(70,60,60,0.08)]">
+          <div className="rounded-[30px] border border-[#e7dedb] bg-white p-6 shadow-[0_20px_60px_rgba(80,60,65,0.08)] sm:p-8">
 
-            <div className="h-1.5 bg-[var(--rose)]" />
+            <div className="mb-7">
 
-            <div className="p-6 sm:p-8">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-[#9b5c69]" />
 
-              {/* CARD HEADER */}
-
-              <div className="mb-7">
-
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--green-light)] px-3 py-1.5">
-
-                  <span className="h-2 w-2 rounded-full bg-[var(--green-dark)]" />
-
-                  <span className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[var(--green-dark)]">
-                    Owner access
-                  </span>
-
-                </div>
-
-                <h2 className="text-xl font-extrabold text-[var(--text)]">
-                  Welcome back
-                </h2>
-
-                <p className="mt-1.5 text-sm leading-6 text-[var(--text-muted)]">
-                  Enter your owner credentials below.
-                </p>
-
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#9b5c69]">
+                  Secure access
+                </span>
               </div>
 
-              {/* FORM */}
+              <h2 className="mt-3 text-xl font-extrabold text-[#292425]">
+                Welcome back
+              </h2>
 
-              <form
-                onSubmit={handleLogin}
-                className="space-y-5"
-              >
+              <p className="mt-1.5 text-sm leading-6 text-[#776d6f]">
+                Enter the owner credentials to continue.
+              </p>
+            </div>
 
-                {/* EMAIL */}
+            {/* =================================================
+                FORM
+            ================================================= */}
 
-                <div>
+            <form
+              onSubmit={login}
+              className="space-y-5"
+            >
 
-                  <label
-                    htmlFor="owner-email"
-                    className="mb-2 block text-xs font-extrabold text-[var(--text)]"
-                  >
-                    Email address
-                  </label>
+              {/* EMAIL */}
 
-                  <input
-                    id="owner-email"
-                    type="email"
-                    value={email}
-                    onChange={(event) =>
-                      setEmail(event.target.value)
-                    }
-                    placeholder="Enter your email"
-                    autoComplete="username"
-                    disabled={loading}
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-semibold text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--rose)] focus:bg-white focus:ring-4 focus:ring-rose-100 disabled:opacity-60"
-                  />
+              <div>
+                <label
+                  htmlFor="admin-email"
+                  className="mb-2 block text-xs font-extrabold text-[#4d4446]"
+                >
+                  Email
+                </label>
 
-                </div>
+                <input
+                  id="admin-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) =>
+                    setEmail(e.target.value)
+                  }
+                  placeholder="Enter owner email"
+                  autoComplete="username"
+                  disabled={loading}
+                  className="w-full rounded-2xl border border-[#e3dcd9] bg-[#fcfaf9] px-4 py-3.5 text-sm font-medium text-[#292425] outline-none transition placeholder:text-[#aaa0a2] focus:border-[#b46a77] focus:bg-white focus:ring-4 focus:ring-[#b46a77]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
 
-                {/* PASSWORD */}
+              {/* PASSWORD */}
 
-                <div>
+              <div>
+                <label
+                  htmlFor="admin-password"
+                  className="mb-2 block text-xs font-extrabold text-[#4d4446]"
+                >
+                  Password
+                </label>
 
-                  <label
-                    htmlFor="owner-password"
-                    className="mb-2 block text-xs font-extrabold text-[var(--text)]"
-                  >
-                    Password
-                  </label>
+                <input
+                  id="admin-password"
+                  type="password"
+                  value={password}
+                  onChange={(e) =>
+                    setPassword(e.target.value)
+                  }
+                  placeholder="Enter owner password"
+                  autoComplete="current-password"
+                  disabled={loading}
+                  className="w-full rounded-2xl border border-[#e3dcd9] bg-[#fcfaf9] px-4 py-3.5 text-sm font-medium text-[#292425] outline-none transition placeholder:text-[#aaa0a2] focus:border-[#b46a77] focus:bg-white focus:ring-4 focus:ring-[#b46a77]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </div>
 
-                  <input
-                    id="owner-password"
-                    type="password"
-                    value={password}
-                    onChange={(event) =>
-                      setPassword(event.target.value)
-                    }
-                    placeholder="Enter your password"
-                    autoComplete="current-password"
-                    disabled={loading}
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3.5 text-sm font-semibold text-[var(--text)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--rose)] focus:bg-white focus:ring-4 focus:ring-rose-100 disabled:opacity-60"
-                  />
+              {/* ERROR */}
 
-                </div>
+              {error && (
+                <div className="rounded-2xl border border-[#ead0d5] bg-[#fff1f3] px-4 py-3.5">
+                  <div className="flex items-start gap-3">
 
-                {/* SECURITY INFO */}
-
-                <div className="rounded-2xl border border-[#dce7d9] bg-[var(--green-light)] p-4">
-
-                  <div className="flex gap-3">
-
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-bold text-[var(--green-dark)] shadow-sm">
-                      ✓
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f2d8dd] text-xs font-extrabold text-[#a34e5d]">
+                      !
                     </div>
 
-                    <div>
-
-                      <p className="text-xs font-extrabold text-[var(--green-dark)]">
-                        Owner access
-                      </p>
-
-                      <p className="mt-1 text-[11px] leading-5 text-[var(--text-muted)]">
-                        This account can access the
-                        store management dashboard.
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                {/* ERROR */}
-
-                {error && (
-                  <div className="rounded-2xl border border-[#edd0d5] bg-[var(--rose-light)] p-4">
-
-                    <p className="text-sm font-extrabold text-[var(--rose-dark)]">
-                      Sign in unsuccessful
-                    </p>
-
-                    <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                    <p className="pt-0.5 text-sm font-semibold leading-5 text-[#9d4d5b]">
                       {error}
                     </p>
 
                   </div>
+                </div>
+              )}
+
+              {/* =================================================
+                  CONTINUE BUTTON
+              ================================================= */}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="relative z-10 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#9b5c69] px-5 py-4 text-sm font-extrabold text-white shadow-[0_10px_25px_rgba(155,92,105,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#864c59] hover:shadow-[0_14px_30px_rgba(155,92,105,0.28)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              >
+                {loading ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                    Checking credentials...
+                  </>
+                ) : (
+                  <>
+                    Continue to Dashboard
+                    <span className="text-base">
+                      →
+                    </span>
+                  </>
                 )}
+              </button>
 
-                {/* LOGIN BUTTON */}
+            </form>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-2xl bg-[var(--rose)] px-5 py-4 text-sm font-extrabold text-[var(--rose-dark)] shadow-lg transition hover:bg-[var(--rose-dark)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loading
-                    ? "Signing in..."
-                    : "Continue to Owner Dashboard"}
-                </button>
+            {/* =================================================
+                SECURITY NOTE
+            ================================================= */}
 
-              </form>
+            <div className="mt-6 flex items-start gap-3 rounded-2xl bg-[#eef4eb] p-4">
+
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#dce9d8] text-sm text-[#63795e]">
+                ✓
+              </div>
+
+              <div>
+                <p className="text-xs font-extrabold text-[#53634f]">
+                  Owner access
+                </p>
+
+                <p className="mt-0.5 text-[11px] leading-5 text-[#71806d]">
+                  Your owner account is protected by
+                  device authorization.
+                </p>
+              </div>
 
             </div>
-
           </div>
 
-          {/* BACK BUTTON */}
+          {/* =================================================
+              FOOTER
+          ================================================= */}
 
-          <button
-            type="button"
-            onClick={() => router.push("/home")}
-            className="mx-auto mt-6 block text-xs font-bold text-[var(--text-muted)] transition hover:text-[var(--rose-dark)]"
-          >
-            ← Back to employee area
-          </button>
-
-          {/* FOOTER */}
-
-          <footer className="py-7 text-center">
-
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+          <div className="mt-6 text-center">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#a09698]">
               Ward Cosmetics
             </p>
 
-            <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+            <p className="mt-1 text-[10px] text-[#aaa1a3]">
               Owner Management System
             </p>
-
-          </footer>
+          </div>
 
         </div>
-
       </div>
-
     </main>
   );
 }
