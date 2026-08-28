@@ -208,17 +208,15 @@ export default function AdminLogin() {
                 </label>
 
                 <input
-                  id="admin-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
-                  placeholder="Enter owner email"
-                  autoComplete="username"
-                  disabled={loading}
-                  className="w-full rounded-2xl border border-[#e3dcd9] bg-[#fcfaf9] px-4 py-3.5 text-sm font-medium text-[#292425] outline-none transition placeholder:text-[#aaa0a2] focus:border-[#b46a77] focus:bg-white focus:ring-4 focus:ring-[#b46a77]/10 disabled:cursor-not-allowed disabled:opacity-60"
-                />
+  id="admin-email"
+  type="text"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  placeholder="Enter owner username"
+  autoComplete="username"
+  disabled={loading}
+  className="w-full rounded-2xl border border-[#e3dcd9] bg-[#fcfaf9] px-4 py-3.5 text-sm font-medium text-[#292425] outline-none transition placeholder:text-[#aaa0a2] focus:border-[#b46a77] focus:bg-white focus:ring-4 focus:ring-[#b46a77]/10 disabled:cursor-not-allowed disabled:opacity-60"
+/>
               </div>
 
               {/* PASSWORD */}
