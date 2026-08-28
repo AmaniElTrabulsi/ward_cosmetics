@@ -53,7 +53,7 @@ export default function HomePage() {
       icon: "➕",
       title: "Add Product",
       description: "Add a new product to the store",
-      path: "/admin/add-product",
+      path: "/add-product",
       background: "#f5e5e8",
     },
     {
