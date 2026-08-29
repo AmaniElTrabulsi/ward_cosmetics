@@ -87,8 +87,8 @@ export default function ShopPage() {
 
     try {
       // IMPORTANT:
-      // There is NO stock filter here.
-      // Out-of-stock products are also displayed.
+      // Do NOT filter by stock_quantity.
+      // Out-of-stock products must also be displayed.
 
       const { data, error: productsError } = await supabase
         .from("products")
@@ -133,7 +133,7 @@ export default function ShopPage() {
   }, [products]);
 
   // ============================================================
-  // FILTER + SEARCH + SORT
+  // FILTER / SEARCH / SORT
   // ============================================================
 
   const displayedProducts = useMemo(() => {
@@ -187,19 +187,19 @@ export default function ShopPage() {
 
       case "in_stock":
         result.sort((a, b) => {
-          const aInStock = a.stock_quantity > 0 ? 1 : 0;
-          const bInStock = b.stock_quantity > 0 ? 1 : 0;
+          const aStock = a.stock_quantity > 0 ? 1 : 0;
+          const bStock = b.stock_quantity > 0 ? 1 : 0;
 
-          return bInStock - aInStock;
+          return bStock - aStock;
         });
         break;
 
       case "out_of_stock":
         result.sort((a, b) => {
-          const aOut = a.stock_quantity <= 0 ? 1 : 0;
-          const bOut = b.stock_quantity <= 0 ? 1 : 0;
+          const aStock = a.stock_quantity > 0 ? 1 : 0;
+          const bStock = b.stock_quantity > 0 ? 1 : 0;
 
-          return bOut - aOut;
+          return aStock - bStock;
         });
         break;
 
@@ -237,12 +237,16 @@ export default function ShopPage() {
   const subtotal = useMemo(() => {
     return cart.reduce(
       (sum, item) =>
-        sum + Number(item.product.price) * item.quantity,
+        sum +
+        Number(item.product.price) * item.quantity,
       0
     );
   }, [cart]);
 
-  // Cash at store = no delivery fee
+  // IMPORTANT:
+  // Store pickup = $0
+  // Delivery methods = $2
+
   const deliveryFee =
     paymentMethod === "cash_at_store"
       ? 0
@@ -259,7 +263,9 @@ export default function ShopPage() {
     setSuccess("");
 
     if (product.stock_quantity <= 0) {
-      setError("This product is currently out of stock.");
+      setError(
+        `${product.name} is currently out of stock.`
+      );
       return;
     }
 
@@ -296,8 +302,10 @@ export default function ShopPage() {
     });
 
     // IMPORTANT:
-    // Do NOT open the cart automatically.
-    // Customer can continue shopping.
+    // DO NOT open the cart here.
+    //
+    // This allows the customer to continue shopping
+    // and add multiple products on mobile.
   }
 
   // ============================================================
@@ -376,9 +384,10 @@ export default function ShopPage() {
     setPaymentMethod(method);
     setError("");
 
-    // If switching to store pickup,
-    // address is no longer required.
-    // We intentionally keep any entered information.
+    // When leaving Whish, remove the reference.
+    if (method !== "whish") {
+      setWhishReference("");
+    }
   }
 
   // ============================================================
@@ -398,39 +407,33 @@ export default function ShopPage() {
       return;
     }
 
-    // NAME
     if (!customerName.trim()) {
       setError("Please enter your name.");
       return;
     }
 
-    // PHONE
     if (!customerPhone.trim()) {
       setError("Please enter your phone number.");
       return;
     }
 
-    // CITY
-    // Required only for delivery
-    if (
-      paymentMethod !== "cash_at_store" &&
-      !customerCity.trim()
-    ) {
+    if (!customerCity.trim()) {
       setError("Please enter your city.");
       return;
     }
 
-    // ADDRESS
-    // Required only for delivery
+    // Address is REQUIRED for delivery.
+    // Address is OPTIONAL for store pickup.
     if (
       paymentMethod !== "cash_at_store" &&
       !customerAddress.trim()
     ) {
-      setError("Please enter your address.");
+      setError(
+        "Please enter your delivery address."
+      );
       return;
     }
 
-    // WHISH REFERENCE
     if (
       paymentMethod === "whish" &&
       !whishReference.trim()
@@ -522,7 +525,8 @@ export default function ShopPage() {
       if (
         paymentMethod === "cash_on_delivery"
       ) {
-        paymentMethodValue = "Cash on Delivery";
+        paymentMethodValue =
+          "Cash on Delivery";
       }
 
       if (paymentMethod === "whish") {
@@ -532,7 +536,8 @@ export default function ShopPage() {
       if (
         paymentMethod === "cash_at_store"
       ) {
-        paymentMethodValue = "Cash at Store";
+        paymentMethodValue =
+          "Cash at Store";
       }
 
       // ========================================================
@@ -550,15 +555,22 @@ export default function ShopPage() {
           : whishText;
       }
 
-      // ========================================================
-      // CUSTOMER LOCATION
-      // ========================================================
-
-      const finalCity =
+      if (
         paymentMethod === "cash_at_store"
-          ? customerCity.trim() || null
-          : customerCity.trim();
+      ) {
+        const pickupText =
+          "Customer will collect the order at the store and pay cash.";
 
+        finalNotes = finalNotes
+          ? `${finalNotes}\n${pickupText}`
+          : pickupText;
+      }
+
+      // ========================================================
+      // ADDRESS
+      // ========================================================
+
+      // For store pickup, send null instead of an empty address.
       const finalAddress =
         paymentMethod === "cash_at_store"
           ? customerAddress.trim() || null
@@ -579,7 +591,7 @@ export default function ShopPage() {
               customerPhone.trim(),
 
             p_customer_city:
-              finalCity,
+              customerCity.trim(),
 
             p_customer_address:
               finalAddress,
@@ -635,6 +647,7 @@ export default function ShopPage() {
       setCustomerAddress("");
       setNotes("");
       setWhishReference("");
+
       setPaymentMethod(
         "cash_on_delivery"
       );
@@ -680,7 +693,6 @@ export default function ShopPage() {
       <main className="min-h-screen bg-[#fbf8f7] px-5 py-12 text-[#342d2f]">
         <div className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center">
           <div className="text-center">
-
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl shadow-sm">
               🛍️
             </div>
@@ -696,7 +708,6 @@ export default function ShopPage() {
             <div className="mx-auto mt-5 h-1.5 w-24 overflow-hidden rounded-full bg-[#dfeeda]">
               <div className="h-full w-1/2 animate-pulse rounded-full bg-[#b96070]" />
             </div>
-
           </div>
         </div>
       </main>
@@ -715,18 +726,15 @@ export default function ShopPage() {
       ====================================================== */}
 
       <header className="sticky top-0 z-40 border-b border-[#eadfe0] bg-[#fbf8f7]/95 backdrop-blur-xl">
-
-        <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
 
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-[#f5dfe4] px-3 py-1.5">
-
               <span className="h-1.5 w-1.5 rounded-full bg-[#b45b6c]" />
 
               <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[#9d4f60]">
                 Ward Cosmetics
               </span>
-
             </div>
 
             <h1 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
@@ -738,11 +746,15 @@ export default function ShopPage() {
 
           <button
             type="button"
-            onClick={() => setCartOpen(true)}
+            onClick={() => {
+              setError("");
+              setCartOpen(true);
+            }}
             className="relative flex h-12 items-center gap-2 rounded-2xl bg-[#b96070] px-4 text-sm font-extrabold text-white shadow-[0_8px_25px_rgba(185,96,112,0.20)] transition hover:-translate-y-0.5 hover:bg-[#a95263]"
           >
-
-            <span>🛒</span>
+            <span className="text-base">
+              🛒
+            </span>
 
             <span className="hidden sm:inline">
               Cart
@@ -753,13 +765,12 @@ export default function ShopPage() {
                 {cartCount}
               </span>
             )}
-
           </button>
 
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-5 py-7 sm:px-6 sm:py-9 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
 
         {/* ====================================================
             SUCCESS
@@ -767,15 +778,12 @@ export default function ShopPage() {
 
         {success && (
           <div className="mb-6 rounded-[24px] border border-[#cfe0c9] bg-[#f1f8ef] p-5">
-
             <div className="flex items-start gap-3">
-
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#dfeeda] font-extrabold text-[#55704d]">
                 ✓
               </div>
 
               <div>
-
                 <p className="text-sm font-extrabold text-[#55704d]">
                   Order placed
                 </p>
@@ -783,11 +791,8 @@ export default function ShopPage() {
                 <p className="mt-1 text-xs leading-5 text-[#71806d]">
                   {success}
                 </p>
-
               </div>
-
             </div>
-
           </div>
         )}
 
@@ -797,15 +802,12 @@ export default function ShopPage() {
 
         {error && (
           <div className="mb-6 rounded-[24px] border border-[#ecd0d5] bg-[#fdf0f2] p-5">
-
             <div className="flex items-start gap-3">
-
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f5dfe4] font-extrabold text-[#a85566]">
                 !
               </div>
 
               <div>
-
                 <p className="text-sm font-extrabold text-[#9d4f60]">
                   Something went wrong
                 </p>
@@ -813,11 +815,8 @@ export default function ShopPage() {
                 <p className="mt-1 text-xs leading-5 text-[#a76c76]">
                   {error}
                 </p>
-
               </div>
-
             </div>
-
           </div>
         )}
 
@@ -862,7 +861,6 @@ export default function ShopPage() {
             {/* SEARCH */}
 
             <div className="relative">
-
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base text-[#9d9194]">
                 ⌕
               </span>
@@ -876,10 +874,9 @@ export default function ShopPage() {
                 placeholder="Search products, brands or barcode..."
                 className="w-full rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] py-3.5 pl-11 pr-4 text-sm font-medium outline-none transition placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:bg-white focus:ring-4 focus:ring-[#f5dfe4]"
               />
-
             </div>
 
-            {/* BRAND */}
+            {/* CATEGORY */}
 
             <select
               value={category}
@@ -888,7 +885,6 @@ export default function ShopPage() {
               }
               className="rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] px-4 py-3.5 text-sm font-semibold text-[#4d4245] outline-none focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
             >
-
               <option value="all">
                 All brands
               </option>
@@ -898,7 +894,6 @@ export default function ShopPage() {
                   {brand}
                 </option>
               ))}
-
             </select>
 
             {/* SORT */}
@@ -910,7 +905,6 @@ export default function ShopPage() {
               }
               className="rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] px-4 py-3.5 text-sm font-semibold text-[#4d4245] outline-none focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
             >
-
               <option value="featured">
                 Newest
               </option>
@@ -942,7 +936,6 @@ export default function ShopPage() {
               <option value="stock">
                 Most Available
               </option>
-
             </select>
 
           </div>
@@ -950,21 +943,15 @@ export default function ShopPage() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
 
             <p className="text-xs font-semibold text-[#887c80]">
-
               Showing{" "}
-
               <span className="font-extrabold text-[#5c4f53]">
                 {displayedProducts.length}
-              </span>
-
-              {" "}of{" "}
-
+              </span>{" "}
+              of{" "}
               <span className="font-extrabold text-[#5c4f53]">
                 {products.length}
-              </span>
-
-              {" "}products
-
+              </span>{" "}
+              products
             </p>
 
             {(search ||
@@ -992,9 +979,7 @@ export default function ShopPage() {
         ==================================================== */}
 
         {displayedProducts.length === 0 ? (
-
           <section className="mt-6 rounded-[28px] border border-[#eadfe0] bg-white p-10 text-center">
-
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl">
               🔍
             </div>
@@ -1006,20 +991,20 @@ export default function ShopPage() {
             <p className="mt-2 text-sm text-[#887c80]">
               Try a different search or filter.
             </p>
-
           </section>
-
         ) : (
-
           <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
 
             {displayedProducts.map((product) => {
-
               const outOfStock =
                 product.stock_quantity <= 0;
 
-              return (
+              const cartItem = cart.find(
+                (item) =>
+                  item.product.id === product.id
+              );
 
+              return (
                 <article
                   key={product.id}
                   className="group overflow-hidden rounded-[22px] border border-[#eadfe0] bg-white shadow-[0_8px_30px_rgba(82,57,61,0.05)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(82,57,61,0.09)] sm:rounded-[28px]"
@@ -1030,7 +1015,6 @@ export default function ShopPage() {
                   <div className="relative aspect-square overflow-hidden bg-[#f7f3f2]">
 
                     {product.image_url ? (
-
                       <img
                         src={product.image_url}
                         alt={product.name}
@@ -1040,42 +1024,39 @@ export default function ShopPage() {
                             : ""
                         }`}
                       />
-
                     ) : (
-
                       <div className="flex h-full w-full items-center justify-center">
                         <span className="text-4xl opacity-40 sm:text-5xl">
                           🛍️
                         </span>
                       </div>
-
                     )}
 
                     {/* STOCK BADGE */}
 
                     <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
-
                       {outOfStock ? (
-
                         <span className="rounded-full bg-[#342d2f]/90 px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[9px]">
                           Out of stock
                         </span>
-
                       ) : product.stock_quantity <= 5 ? (
-
                         <span className="rounded-full bg-[#fff1d9] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#9a6a27] sm:px-3 sm:py-1.5 sm:text-[9px]">
                           Only {product.stock_quantity} left
                         </span>
-
                       ) : (
-
                         <span className="rounded-full bg-[#e9f4e6] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#55704d] sm:px-3 sm:py-1.5 sm:text-[9px]">
                           In stock
                         </span>
-
                       )}
-
                     </div>
+
+                    {/* CART QUANTITY */}
+
+                    {cartItem && (
+                      <div className="absolute right-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-[#b96070] px-2 text-[9px] font-extrabold text-white shadow-md sm:right-3 sm:top-3 sm:h-8 sm:min-w-8">
+                        {cartItem.quantity}
+                      </div>
+                    )}
 
                   </div>
 
@@ -1084,29 +1065,27 @@ export default function ShopPage() {
                   <div className="p-3 sm:p-5">
 
                     {product.brand && (
-                      <p className="text-[7px] font-extrabold uppercase tracking-[0.14em] text-[#a85566] sm:text-[9px]">
+                      <p className="truncate text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#a85566] sm:text-[9px]">
                         {product.brand}
                       </p>
                     )}
 
-                    <h3 className="mt-1 line-clamp-2 min-h-[38px] text-xs font-extrabold leading-4 text-[#3b3335] sm:mt-1.5 sm:min-h-[44px] sm:text-sm sm:leading-5">
+                    <h3 className="mt-1.5 line-clamp-2 min-h-[38px] text-xs font-extrabold leading-4 text-[#3b3335] sm:min-h-[44px] sm:text-sm sm:leading-5">
                       {product.name}
                     </h3>
 
-                    <div className="mt-3 flex flex-col gap-2 sm:mt-4 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+                    <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
 
                       <div>
-
                         <p className="text-base font-extrabold text-[#a85566] sm:text-lg">
                           {formatPrice(product.price)}
                         </p>
 
                         {!outOfStock && (
-                          <p className="mt-0.5 text-[8px] text-[#9b8e91] sm:text-[10px]">
+                          <p className="mt-0.5 text-[9px] text-[#9b8e91] sm:text-[10px]">
                             {product.stock_quantity} available
                           </p>
                         )}
-
                       </div>
 
                       <button
@@ -1123,6 +1102,8 @@ export default function ShopPage() {
                       >
                         {outOfStock
                           ? "Unavailable"
+                          : cartItem
+                          ? "Add another"
                           : "Add to cart"}
                       </button>
 
@@ -1135,7 +1116,6 @@ export default function ShopPage() {
             })}
 
           </section>
-
         )}
 
         {/* ====================================================
@@ -1161,12 +1141,10 @@ export default function ShopPage() {
       ====================================================== */}
 
       {cartOpen && (
-
         <div
           className="fixed inset-0 z-[100] bg-[#29302b]/30 backdrop-blur-[3px]"
           onClick={() => setCartOpen(false)}
         >
-
           <aside
             className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-[#fbf8f7] shadow-[-15px_0_50px_rgba(60,70,62,0.14)]"
             onClick={(event) =>
@@ -1177,9 +1155,7 @@ export default function ShopPage() {
             {/* CART HEADER */}
 
             <div className="flex items-center justify-between border-b border-[#eadfe0] px-5 py-5">
-
               <div>
-
                 <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
                   Your selection
                 </p>
@@ -1187,7 +1163,6 @@ export default function ShopPage() {
                 <h2 className="mt-1 text-xl font-extrabold">
                   Shopping cart
                 </h2>
-
               </div>
 
               <button
@@ -1197,7 +1172,6 @@ export default function ShopPage() {
               >
                 ×
               </button>
-
             </div>
 
             {/* CART CONTENT */}
@@ -1205,9 +1179,7 @@ export default function ShopPage() {
             <div className="flex-1 overflow-y-auto px-5 py-5">
 
               {cart.length === 0 ? (
-
                 <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
-
                   <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl">
                     🛒
                   </div>
@@ -1219,40 +1191,29 @@ export default function ShopPage() {
                   <p className="mt-2 max-w-xs text-xs leading-5 text-[#887c80]">
                     Add some products to get started.
                   </p>
-
                 </div>
-
               ) : (
-
                 <div className="space-y-3">
 
                   {cart.map((item) => (
-
                     <div
                       key={item.product.id}
                       className="rounded-[22px] border border-[#eadfe0] bg-white p-3"
                     >
-
                       <div className="flex gap-3">
 
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[16px] bg-[#f7f3f2]">
-
                           {item.product.image_url ? (
-
                             <img
                               src={item.product.image_url}
                               alt={item.product.name}
                               className="h-full w-full object-cover"
                             />
-
                           ) : (
-
                             <div className="flex h-full items-center justify-center text-xl">
                               🛍️
                             </div>
-
                           )}
-
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -1324,13 +1285,10 @@ export default function ShopPage() {
                         </div>
 
                       </div>
-
                     </div>
-
                   ))}
 
                 </div>
-
               )}
 
             </div>
@@ -1338,41 +1296,33 @@ export default function ShopPage() {
             {/* CART FOOTER */}
 
             {cart.length > 0 && (
-
               <div className="border-t border-[#eadfe0] bg-white p-5">
 
                 <div className="space-y-2 text-xs">
 
                   <div className="flex justify-between text-[#887c80]">
-
-                    <span>
-                      Subtotal
-                    </span>
+                    <span>Subtotal</span>
 
                     <span className="font-bold text-[#4d4245]">
                       {formatPrice(subtotal)}
                     </span>
-
                   </div>
 
                   <div className="flex justify-between text-[#887c80]">
-
                     <span>
                       Delivery
                     </span>
 
                     <span className="font-bold text-[#4d4245]">
                       {formatPrice(
-                        deliveryFee
+                        DELIVERY_FEE
                       )}
                     </span>
-
                   </div>
 
                   <div className="my-3 border-t border-[#eee6e7]" />
 
                   <div className="flex justify-between">
-
                     <span className="text-sm font-extrabold">
                       Total
                     </span>
@@ -1380,7 +1330,6 @@ export default function ShopPage() {
                     <span className="text-lg font-extrabold text-[#a85566]">
                       {formatPrice(total)}
                     </span>
-
                   </div>
 
                 </div>
@@ -1394,13 +1343,10 @@ export default function ShopPage() {
                 </button>
 
               </div>
-
             )}
 
           </aside>
-
         </div>
-
       )}
 
       {/* ======================================================
@@ -1408,7 +1354,6 @@ export default function ShopPage() {
       ====================================================== */}
 
       {checkoutOpen && (
-
         <div
           className="fixed inset-0 z-[110] overflow-y-auto bg-[#29302b]/35 px-4 py-6 backdrop-blur-[4px] sm:px-6"
           onClick={() => {
@@ -1434,7 +1379,6 @@ export default function ShopPage() {
                 <div className="flex items-center justify-between">
 
                   <div>
-
                     <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
                       Almost there
                     </p>
@@ -1442,7 +1386,6 @@ export default function ShopPage() {
                     <h2 className="mt-1 text-xl font-extrabold">
                       Checkout
                     </h2>
-
                   </div>
 
                   <button
@@ -1478,20 +1421,17 @@ export default function ShopPage() {
                     </p>
 
                     <h3 className="mt-1 text-base font-extrabold">
-
                       {paymentMethod ===
                       "cash_at_store"
                         ? "Your information"
                         : "Where should we deliver?"}
-
                     </h3>
 
                     {paymentMethod ===
                       "cash_at_store" && (
                       <p className="mt-1 text-xs leading-5 text-[#887c80]">
-                        You're collecting your order from
-                        the store, so delivery details are
-                        optional.
+                        You will collect your order
+                        from the store and pay cash.
                       </p>
                     )}
 
@@ -1515,12 +1455,7 @@ export default function ShopPage() {
                     />
 
                     <CheckoutInput
-                      label={
-                        paymentMethod ===
-                        "cash_at_store"
-                          ? "City (optional)"
-                          : "City"
-                      }
+                      label="City"
                       value={customerCity}
                       onChange={setCustomerCity}
                       placeholder="Your city"
@@ -1531,7 +1466,7 @@ export default function ShopPage() {
                         paymentMethod ===
                         "cash_at_store"
                           ? "Address (optional)"
-                          : "Address"
+                          : "Delivery address"
                       }
                       value={customerAddress}
                       onChange={setCustomerAddress}
@@ -1578,7 +1513,7 @@ export default function ShopPage() {
                         )
                       }
                       title="Cash on Delivery"
-                      description="Pay the delivery driver when your order arrives."
+                      description="Pay the delivery driver when your order arrives. $2 delivery fee."
                       icon="💵"
                     />
 
@@ -1586,13 +1521,16 @@ export default function ShopPage() {
 
                     <PaymentOption
                       selected={
-                        paymentMethod === "whish"
+                        paymentMethod ===
+                        "whish"
                       }
                       onClick={() =>
-                        changePaymentMethod("whish")
+                        changePaymentMethod(
+                          "whish"
+                        )
                       }
                       title="Whish"
-                      description={`Send the payment to ${WHISH_NAME} — ${WHISH_PHONE}.`}
+                      description={`Send the payment to ${WHISH_NAME} — ${WHISH_PHONE}. $2 delivery fee.`}
                       icon="📱"
                     />
 
@@ -1609,7 +1547,7 @@ export default function ShopPage() {
                         )
                       }
                       title="Cash at Store"
-                      description="Pay cash when you come to the store and collect your order."
+                      description="Collect your order from the store and pay cash. No delivery fee."
                       icon="🏪"
                     />
 
@@ -1617,8 +1555,8 @@ export default function ShopPage() {
 
                   {/* WHISH INSTRUCTIONS */}
 
-                  {paymentMethod === "whish" && (
-
+                  {paymentMethod ===
+                    "whish" && (
                     <div className="mt-4 rounded-[22px] border border-[#e8d2d7] bg-[#fff5f6] p-4">
 
                       <p className="text-xs font-extrabold text-[#9d4f60]">
@@ -1640,16 +1578,12 @@ export default function ShopPage() {
                         </p>
 
                         <p className="mt-3 text-xs leading-5 text-[#806d70]">
-
                           Send{" "}
-
                           <strong>
                             {formatPrice(total)}
-                          </strong>
-
-                          {" "}through Whish, then enter your
+                          </strong>{" "}
+                          through Whish, then enter your
                           transaction/reference number below.
-
                         </p>
 
                       </div>
@@ -1675,40 +1609,6 @@ export default function ShopPage() {
                       </div>
 
                     </div>
-
-                  )}
-
-                  {/* STORE PICKUP NOTICE */}
-
-                  {paymentMethod ===
-                    "cash_at_store" && (
-
-                    <div className="mt-4 rounded-[22px] border border-[#dce7de] bg-[#f3f8f1] p-4">
-
-                      <div className="flex gap-3">
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#dfeeda]">
-                          🏪
-                        </div>
-
-                        <div>
-
-                          <p className="text-xs font-extrabold text-[#55704d]">
-                            Store collection
-                          </p>
-
-                          <p className="mt-1 text-xs leading-5 text-[#71806d]">
-                            No delivery fee will be added.
-                            You can pay cash when you come
-                            to the store to collect your order.
-                          </p>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
                   )}
 
                 </section>
@@ -1718,13 +1618,10 @@ export default function ShopPage() {
                 <section>
 
                   <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
-
                     Notes{" "}
-
                     <span className="font-medium text-[#aaa0a2]">
                       (optional)
                     </span>
-
                   </label>
 
                   <textarea
@@ -1746,7 +1643,6 @@ export default function ShopPage() {
                   <div className="flex items-center justify-between">
 
                     <div>
-
                       <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#55704d]">
                         Order summary
                       </p>
@@ -1757,7 +1653,6 @@ export default function ShopPage() {
                           ? "item"
                           : "items"}
                       </p>
-
                     </div>
 
                     <p className="text-xl font-extrabold text-[#55704d]">
@@ -1769,38 +1664,36 @@ export default function ShopPage() {
                   <div className="mt-4 space-y-2 border-t border-[#dce7de] pt-4 text-xs">
 
                     <div className="flex justify-between text-[#71806d]">
-
                       <span>
                         Subtotal
                       </span>
 
                       <span className="font-bold">
-                        {formatPrice(subtotal)}
+                        {formatPrice(
+                          subtotal
+                        )}
                       </span>
-
                     </div>
 
                     <div className="flex justify-between text-[#71806d]">
-
                       <span>
                         {paymentMethod ===
                         "cash_at_store"
-                          ? "Delivery"
+                          ? "Store pickup"
                           : "Delivery"}
                       </span>
 
                       <span className="font-bold">
-                        {deliveryFee === 0
-                          ? "Free"
+                        {paymentMethod ===
+                        "cash_at_store"
+                          ? "$0.00"
                           : formatPrice(
                               deliveryFee
                             )}
                       </span>
-
                     </div>
 
                     <div className="flex justify-between pt-2 text-sm font-extrabold text-[#55704d]">
-
                       <span>
                         Total
                       </span>
@@ -1808,7 +1701,6 @@ export default function ShopPage() {
                       <span>
                         {formatPrice(total)}
                       </span>
-
                     </div>
 
                   </div>
@@ -1819,11 +1711,9 @@ export default function ShopPage() {
 
                 {error && (
                   <div className="rounded-[18px] border border-[#ecd0d5] bg-[#fdf0f2] px-4 py-3">
-
                     <p className="text-xs font-extrabold text-[#9d4f60]">
                       {error}
                     </p>
-
                   </div>
                 )}
 
@@ -1834,30 +1724,19 @@ export default function ShopPage() {
                   disabled={placingOrder}
                   className="w-full rounded-[19px] bg-[#b96070] px-4 py-4 text-sm font-extrabold text-white shadow-[0_10px_25px_rgba(185,96,112,0.20)] transition hover:-translate-y-0.5 hover:bg-[#a95263] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-
                   {placingOrder ? (
-
                     <span className="flex items-center justify-center gap-2">
-
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-
                       Placing order...
-
                     </span>
-
                   ) : (
-
                     `Place order • ${formatPrice(total)}`
-
                   )}
-
                 </button>
 
                 <p className="text-center text-[10px] leading-4 text-[#9b8e91]">
-
                   By placing your order, you confirm that
                   the information provided is correct.
-
                 </p>
 
               </form>
@@ -1867,7 +1746,6 @@ export default function ShopPage() {
           </div>
 
         </div>
-
       )}
 
     </main>
@@ -1893,7 +1771,6 @@ function CheckoutInput({
 }) {
   return (
     <div>
-
       <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
         {label}
       </label>
@@ -1907,7 +1784,6 @@ function CheckoutInput({
         placeholder={placeholder}
         className="w-full rounded-[17px] border border-[#e7dddd] bg-white px-4 py-3.5 text-sm font-medium text-[#3b3335] outline-none placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
       />
-
     </div>
   );
 }
@@ -1930,7 +1806,6 @@ function PaymentOption({
   icon: string;
 }) {
   return (
-
     <button
       type="button"
       onClick={onClick}
@@ -1940,7 +1815,6 @@ function PaymentOption({
           : "border-[#e7dddd] bg-white hover:border-[#d9c6c9]"
       }`}
     >
-
       <div
         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg ${
           selected
@@ -1980,6 +1854,5 @@ function PaymentOption({
       </div>
 
     </button>
-
   );
 }
