@@ -100,14 +100,14 @@ export default function ShopPage() {
         });
 
       if (productsError) {
-        console.error(productsError);
+        console.error("Error loading products:", productsError);
         setError("Unable to load products.");
         return;
       }
 
-      setProducts(data || []);
+      setProducts((data || []) as Product[]);
     } catch (err) {
-      console.error(err);
+      console.error("Error loading products:", err);
       setError("Something went wrong while loading products.");
     } finally {
       setLoading(false);
@@ -243,9 +243,8 @@ export default function ShopPage() {
     );
   }, [cart]);
 
-  // IMPORTANT:
-  // Store pickup = $0
-  // Delivery methods = $2
+  // Cash at Store = free pickup.
+  // Delivery methods = $2.
 
   const deliveryFee =
     paymentMethod === "cash_at_store"
@@ -300,12 +299,6 @@ export default function ShopPage() {
         },
       ];
     });
-
-    // IMPORTANT:
-    // DO NOT open the cart here.
-    //
-    // This allows the customer to continue shopping
-    // and add multiple products on mobile.
   }
 
   // ============================================================
@@ -375,7 +368,7 @@ export default function ShopPage() {
   }
 
   // ============================================================
-  // PAYMENT METHOD CHANGE
+  // PAYMENT METHOD
   // ============================================================
 
   function changePaymentMethod(
@@ -384,7 +377,6 @@ export default function ShopPage() {
     setPaymentMethod(method);
     setError("");
 
-    // When leaving Whish, remove the reference.
     if (method !== "whish") {
       setWhishReference("");
     }
@@ -422,8 +414,9 @@ export default function ShopPage() {
       return;
     }
 
-    // Address is REQUIRED for delivery.
-    // Address is OPTIONAL for store pickup.
+    // Address required for delivery.
+    // Address optional for store pickup.
+
     if (
       paymentMethod !== "cash_at_store" &&
       !customerAddress.trim()
@@ -466,7 +459,10 @@ export default function ShopPage() {
         .in("id", productIds);
 
       if (stockError) {
-        console.error(stockError);
+        console.error(
+          "Stock verification error:",
+          stockError
+        );
 
         setError(
           "Unable to verify product availability."
@@ -495,7 +491,7 @@ export default function ShopPage() {
           item.quantity
         ) {
           setError(
-            `Only ${currentProduct.stock_quantity} of ${item.product.name} are currently available.`
+            `The selected quantity of ${item.product.name} is no longer available.`
           );
 
           return;
@@ -503,7 +499,7 @@ export default function ShopPage() {
       }
 
       // ========================================================
-      // PREPARE ITEMS
+      // PREPARE ORDER ITEMS
       // ========================================================
 
       const items = cart.map((item) => ({
@@ -519,26 +515,18 @@ export default function ShopPage() {
       // ========================================================
       // PAYMENT METHOD
       // ========================================================
+      //
+      // IMPORTANT:
+      // These values MUST exactly match the Supabase
+      // orders_payment_method_check constraint:
+      //
+      // cash_on_delivery
+      // whish
+      // cash_at_store
+      //
+      // DO NOT convert these to display text.
 
-      let paymentMethodValue = "";
-
-      if (
-        paymentMethod === "cash_on_delivery"
-      ) {
-        paymentMethodValue =
-          "Cash on Delivery";
-      }
-
-      if (paymentMethod === "whish") {
-        paymentMethodValue = "Whish";
-      }
-
-      if (
-        paymentMethod === "cash_at_store"
-      ) {
-        paymentMethodValue =
-          "Cash at Store";
-      }
+      const paymentMethodValue = paymentMethod;
 
       // ========================================================
       // NOTES
@@ -555,9 +543,7 @@ export default function ShopPage() {
           : whishText;
       }
 
-      if (
-        paymentMethod === "cash_at_store"
-      ) {
+      if (paymentMethod === "cash_at_store") {
         const pickupText =
           "Customer will collect the order at the store and pay cash.";
 
@@ -570,7 +556,6 @@ export default function ShopPage() {
       // ADDRESS
       // ========================================================
 
-      // For store pickup, send null instead of an empty address.
       const finalAddress =
         paymentMethod === "cash_at_store"
           ? customerAddress.trim() || null
@@ -655,6 +640,9 @@ export default function ShopPage() {
       setSuccess(
         "Your order has been placed successfully!"
       );
+
+      // Refresh products in case inventory changed.
+      await loadProducts();
 
       window.scrollTo({
         top: 0,
@@ -1032,22 +1020,24 @@ export default function ShopPage() {
                       </div>
                     )}
 
-                    {/* STOCK BADGE */}
+                    {/* STOCK STATUS */}
 
                     <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
+
                       {outOfStock ? (
                         <span className="rounded-full bg-[#342d2f]/90 px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[9px]">
                           Out of stock
                         </span>
                       ) : product.stock_quantity <= 5 ? (
                         <span className="rounded-full bg-[#fff1d9] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#9a6a27] sm:px-3 sm:py-1.5 sm:text-[9px]">
-                          Only {product.stock_quantity} left
+                          Limited stock
                         </span>
                       ) : (
                         <span className="rounded-full bg-[#e9f4e6] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#55704d] sm:px-3 sm:py-1.5 sm:text-[9px]">
                           In stock
                         </span>
                       )}
+
                     </div>
 
                     {/* CART QUANTITY */}
@@ -1080,12 +1070,6 @@ export default function ShopPage() {
                         <p className="text-base font-extrabold text-[#a85566] sm:text-lg">
                           {formatPrice(product.price)}
                         </p>
-
-                        {!outOfStock && (
-                          <p className="mt-0.5 text-[9px] text-[#9b8e91] sm:text-[10px]">
-                            {product.stock_quantity} available
-                          </p>
-                        )}
                       </div>
 
                       <button
@@ -1155,6 +1139,7 @@ export default function ShopPage() {
             {/* CART HEADER */}
 
             <div className="flex items-center justify-between border-b border-[#eadfe0] px-5 py-5">
+
               <div>
                 <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
                   Your selection
@@ -1172,6 +1157,7 @@ export default function ShopPage() {
               >
                 ×
               </button>
+
             </div>
 
             {/* CART CONTENT */}
@@ -1180,6 +1166,7 @@ export default function ShopPage() {
 
               {cart.length === 0 ? (
                 <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+
                   <div className="flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl">
                     🛒
                   </div>
@@ -1191,6 +1178,7 @@ export default function ShopPage() {
                   <p className="mt-2 max-w-xs text-xs leading-5 text-[#887c80]">
                     Add some products to get started.
                   </p>
+
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1203,6 +1191,7 @@ export default function ShopPage() {
                       <div className="flex gap-3">
 
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[16px] bg-[#f7f3f2]">
+
                           {item.product.image_url ? (
                             <img
                               src={item.product.image_url}
@@ -1214,6 +1203,7 @@ export default function ShopPage() {
                               🛍️
                             </div>
                           )}
+
                         </div>
 
                         <div className="min-w-0 flex-1">
@@ -1301,7 +1291,9 @@ export default function ShopPage() {
                 <div className="space-y-2 text-xs">
 
                   <div className="flex justify-between text-[#887c80]">
-                    <span>Subtotal</span>
+                    <span>
+                      Subtotal
+                    </span>
 
                     <span className="font-bold text-[#4d4245]">
                       {formatPrice(subtotal)}
@@ -1314,15 +1306,14 @@ export default function ShopPage() {
                     </span>
 
                     <span className="font-bold text-[#4d4245]">
-                      {formatPrice(
-                        DELIVERY_FEE
-                      )}
+                      {formatPrice(deliveryFee)}
                     </span>
                   </div>
 
                   <div className="my-3 border-t border-[#eee6e7]" />
 
                   <div className="flex justify-between">
+
                     <span className="text-sm font-extrabold">
                       Total
                     </span>
@@ -1330,6 +1321,7 @@ export default function ShopPage() {
                     <span className="text-lg font-extrabold text-[#a85566]">
                       {formatPrice(total)}
                     </span>
+
                   </div>
 
                 </div>
@@ -1521,8 +1513,7 @@ export default function ShopPage() {
 
                     <PaymentOption
                       selected={
-                        paymentMethod ===
-                        "whish"
+                        paymentMethod === "whish"
                       }
                       onClick={() =>
                         changePaymentMethod(
@@ -1669,9 +1660,7 @@ export default function ShopPage() {
                       </span>
 
                       <span className="font-bold">
-                        {formatPrice(
-                          subtotal
-                        )}
+                        {formatPrice(subtotal)}
                       </span>
                     </div>
 
