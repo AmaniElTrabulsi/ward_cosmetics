@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToArrayBuffer(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 
   const base64 = (base64String + padding)
@@ -12,9 +12,13 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
   const rawData = window.atob(base64);
 
-  return Uint8Array.from(
-    Array.from(rawData).map((char) => char.charCodeAt(0))
-  );
+  const bytes = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; i++) {
+    bytes[i] = rawData.charCodeAt(i);
+  }
+
+  return bytes.buffer;
 }
 
 export default function PushNotificationSetup() {
@@ -50,13 +54,12 @@ export default function PushNotificationSetup() {
           return;
         }
 
-        // Register the existing service worker
+        // Register the Ward Cosmetics service worker
         const registration =
           await navigator.serviceWorker.register("/sw.js");
 
         console.log("Service worker registered.");
 
-        // Wait until the service worker is ready
         await navigator.serviceWorker.ready;
 
         // Check notification permission
@@ -73,17 +76,17 @@ export default function PushNotificationSetup() {
           return;
         }
 
-        // Check whether this device already has a subscription
+        // Check for an existing subscription
         let subscription =
           await registration.pushManager.getSubscription();
 
-        // Create a new subscription if necessary
+        // Create subscription if this device doesn't have one
         if (!subscription) {
           subscription =
             await registration.pushManager.subscribe({
               userVisibleOnly: true,
               applicationServerKey:
-                urlBase64ToUint8Array(vapidPublicKey),
+                urlBase64ToArrayBuffer(vapidPublicKey),
             });
 
           console.log("New push subscription created.");
@@ -102,7 +105,7 @@ export default function PushNotificationSetup() {
           return;
         }
 
-        // Save the phone subscription in Supabase
+        // Save this device in Supabase
         const { error } = await supabase
           .from("push_subscriptions")
           .upsert(
@@ -125,7 +128,7 @@ export default function PushNotificationSetup() {
         }
 
         console.log(
-          "Push notifications successfully enabled."
+          "Ward Cosmetics push notifications are enabled."
         );
       } catch (error) {
         console.error(
