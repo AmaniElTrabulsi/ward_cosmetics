@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import PushNotificationSetup from "@/components/PushNotificationSetup";
 
 export const metadata: Metadata = {
   title: "Ward Cosmetics",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <PushNotificationSetup />
+        {children}
+      </body>
     </html>
   );
 }

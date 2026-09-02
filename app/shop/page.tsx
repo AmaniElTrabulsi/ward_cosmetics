@@ -59,6 +59,10 @@ export default function ShopPage() {
   // Cart
   const [cartOpen, setCartOpen] = useState(false);
 
+  // Product details
+  const [selectedProduct, setSelectedProduct] =
+    useState<Product | null>(null);
+
   // Checkout
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
@@ -86,10 +90,6 @@ export default function ShopPage() {
     setError("");
 
     try {
-      // IMPORTANT:
-      // Do NOT filter by stock_quantity.
-      // Out-of-stock products must also be displayed.
-
       const { data, error: productsError } = await supabase
         .from("products")
         .select(
@@ -141,7 +141,6 @@ export default function ShopPage() {
 
     const searchValue = search.trim().toLowerCase();
 
-    // SEARCH
     if (searchValue) {
       result = result.filter((product) => {
         const name = product.name?.toLowerCase() || "";
@@ -156,14 +155,12 @@ export default function ShopPage() {
       });
     }
 
-    // BRAND FILTER
     if (category !== "all") {
       result = result.filter(
         (product) => product.brand === category
       );
     }
 
-    // SORT
     switch (sort) {
       case "price_low":
         result.sort((a, b) => a.price - b.price);
@@ -242,9 +239,6 @@ export default function ShopPage() {
       0
     );
   }, [cart]);
-
-  // Cash at Store = free pickup.
-  // Delivery methods = $2.
 
   const deliveryFee =
     paymentMethod === "cash_at_store"
@@ -414,9 +408,6 @@ export default function ShopPage() {
       return;
     }
 
-    // Address required for delivery.
-    // Address optional for store pickup.
-
     if (
       paymentMethod !== "cash_at_store" &&
       !customerAddress.trim()
@@ -440,10 +431,6 @@ export default function ShopPage() {
     setPlacingOrder(true);
 
     try {
-      // ========================================================
-      // RE-CHECK STOCK
-      // ========================================================
-
       const productIds = cart.map(
         (item) => item.product.id
       );
@@ -498,10 +485,6 @@ export default function ShopPage() {
         }
       }
 
-      // ========================================================
-      // PREPARE ORDER ITEMS
-      // ========================================================
-
       const items = cart.map((item) => ({
         product_id: item.product.id,
         product_name: item.product.name,
@@ -512,25 +495,7 @@ export default function ShopPage() {
           item.quantity,
       }));
 
-      // ========================================================
-      // PAYMENT METHOD
-      // ========================================================
-      //
-      // IMPORTANT:
-      // These values MUST exactly match the Supabase
-      // orders_payment_method_check constraint:
-      //
-      // cash_on_delivery
-      // whish
-      // cash_at_store
-      //
-      // DO NOT convert these to display text.
-
       const paymentMethodValue = paymentMethod;
-
-      // ========================================================
-      // NOTES
-      // ========================================================
 
       let finalNotes = notes.trim();
 
@@ -552,18 +517,10 @@ export default function ShopPage() {
           : pickupText;
       }
 
-      // ========================================================
-      // ADDRESS
-      // ========================================================
-
       const finalAddress =
         paymentMethod === "cash_at_store"
           ? customerAddress.trim() || null
           : customerAddress.trim();
-
-      // ========================================================
-      // CREATE ORDER
-      // ========================================================
 
       const { data, error: orderError } =
         await supabase.rpc(
@@ -618,10 +575,6 @@ export default function ShopPage() {
         data
       );
 
-      // ========================================================
-      // SUCCESS
-      // ========================================================
-
       setCart([]);
       setCheckoutOpen(false);
       setCartOpen(false);
@@ -641,7 +594,6 @@ export default function ShopPage() {
         "Your order has been placed successfully!"
       );
 
-      // Refresh products in case inventory changed.
       await loadProducts();
 
       window.scrollTo({
@@ -760,9 +712,7 @@ export default function ShopPage() {
 
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
 
-        {/* ====================================================
-            SUCCESS
-        ==================================================== */}
+        {/* SUCCESS */}
 
         {success && (
           <div className="mb-6 rounded-[24px] border border-[#cfe0c9] bg-[#f1f8ef] p-5">
@@ -784,9 +734,7 @@ export default function ShopPage() {
           </div>
         )}
 
-        {/* ====================================================
-            ERROR
-        ==================================================== */}
+        {/* ERROR */}
 
         {error && (
           <div className="mb-6 rounded-[24px] border border-[#ecd0d5] bg-[#fdf0f2] p-5">
@@ -808,9 +756,7 @@ export default function ShopPage() {
           </div>
         )}
 
-        {/* ====================================================
-            HERO
-        ==================================================== */}
+        {/* HERO */}
 
         <section className="relative overflow-hidden rounded-[32px] border border-[#eadfe0] bg-white p-6 shadow-[0_15px_50px_rgba(82,57,61,0.06)] sm:p-8">
 
@@ -838,9 +784,7 @@ export default function ShopPage() {
 
         </section>
 
-        {/* ====================================================
-            SEARCH / FILTERS
-        ==================================================== */}
+        {/* SEARCH / FILTERS */}
 
         <section className="mt-6 rounded-[28px] border border-[#eadfe0] bg-white p-4 shadow-[0_10px_35px_rgba(82,57,61,0.05)] sm:p-5">
 
@@ -962,9 +906,7 @@ export default function ShopPage() {
 
         </section>
 
-        {/* ====================================================
-            PRODUCTS
-        ==================================================== */}
+        {/* PRODUCTS */}
 
         {displayedProducts.length === 0 ? (
           <section className="mt-6 rounded-[28px] border border-[#eadfe0] bg-white p-10 text-center">
@@ -995,7 +937,10 @@ export default function ShopPage() {
               return (
                 <article
                   key={product.id}
-                  className="group overflow-hidden rounded-[22px] border border-[#eadfe0] bg-white shadow-[0_8px_30px_rgba(82,57,61,0.05)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(82,57,61,0.09)] sm:rounded-[28px]"
+                  onClick={() =>
+                    setSelectedProduct(product)
+                  }
+                  className="group cursor-pointer overflow-hidden rounded-[22px] border border-[#eadfe0] bg-white shadow-[0_8px_30px_rgba(82,57,61,0.05)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(82,57,61,0.09)] sm:rounded-[28px]"
                 >
 
                   {/* IMAGE */}
@@ -1075,9 +1020,10 @@ export default function ShopPage() {
                       <button
                         type="button"
                         disabled={outOfStock}
-                        onClick={() =>
-                          addToCart(product)
-                        }
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          addToCart(product);
+                        }}
                         className={`flex h-10 w-full items-center justify-center rounded-xl px-2 text-[10px] font-extrabold transition sm:h-11 sm:w-auto sm:rounded-2xl sm:px-4 sm:text-xs ${
                           outOfStock
                             ? "cursor-not-allowed bg-[#eee9e9] text-[#aaa0a2]"
@@ -1093,6 +1039,12 @@ export default function ShopPage() {
 
                     </div>
 
+                    {/* TAP HINT */}
+
+                    <p className="mt-3 text-center text-[9px] font-semibold text-[#b0a5a7]">
+                      Tap to view product details
+                    </p>
+
                   </div>
 
                 </article>
@@ -1102,9 +1054,7 @@ export default function ShopPage() {
           </section>
         )}
 
-        {/* ====================================================
-            FOOTER
-        ==================================================== */}
+        {/* FOOTER */}
 
         <footer className="py-12 text-center">
 
@@ -1121,13 +1071,217 @@ export default function ShopPage() {
       </div>
 
       {/* ======================================================
+          PRODUCT DETAILS MODAL
+      ====================================================== */}
+
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 z-[120] overflow-y-auto bg-[#29302b]/40 px-4 py-6 backdrop-blur-[5px] sm:px-6"
+          onClick={() =>
+            setSelectedProduct(null)
+          }
+        >
+
+          <div className="flex min-h-full items-center justify-center">
+
+            <div
+              className="relative w-full max-w-2xl overflow-hidden rounded-[30px] border border-[#eadfe0] bg-[#fbf8f7] shadow-[0_25px_80px_rgba(60,50,53,0.25)]"
+              onClick={(event) =>
+                event.stopPropagation()
+              }
+            >
+
+              {/* CLOSE BUTTON */}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedProduct(null)
+                }
+                className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-xl font-medium text-[#705f63] shadow-md backdrop-blur transition hover:bg-[#f5dfe4]"
+                aria-label="Close product details"
+              >
+                ×
+              </button>
+
+              {/* PRODUCT IMAGE */}
+
+              <div className="relative aspect-square w-full bg-[#f7f3f2] sm:aspect-[4/3]">
+
+                {selectedProduct.image_url ? (
+                  <img
+                    src={selectedProduct.image_url}
+                    alt={selectedProduct.name}
+                    className={`h-full w-full object-cover ${
+                      selectedProduct.stock_quantity <= 0
+                        ? "opacity-60"
+                        : ""
+                    }`}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <span className="text-7xl opacity-30">
+                      🛍️
+                    </span>
+                  </div>
+                )}
+
+                {/* STOCK BADGE */}
+
+                <div className="absolute left-4 top-4">
+
+                  {selectedProduct.stock_quantity <= 0 ? (
+                    <span className="rounded-full bg-[#342d2f]/90 px-4 py-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-white">
+                      Out of stock
+                    </span>
+                  ) : selectedProduct.stock_quantity <= 5 ? (
+                    <span className="rounded-full bg-[#fff1d9] px-4 py-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#9a6a27]">
+                      Limited stock
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-[#e9f4e6] px-4 py-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#55704d]">
+                      In stock
+                    </span>
+                  )}
+
+                </div>
+
+              </div>
+
+              {/* PRODUCT INFORMATION */}
+
+              <div className="p-5 sm:p-7">
+
+                {/* BRAND */}
+
+                {selectedProduct.brand && (
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#a85566]">
+                    {selectedProduct.brand}
+                  </p>
+                )}
+
+                {/* NAME */}
+
+                <h2 className="mt-2 pr-8 text-2xl font-extrabold tracking-tight text-[#342d2f] sm:text-3xl">
+                  {selectedProduct.name}
+                </h2>
+
+                {/* PRICE */}
+
+                <p className="mt-3 text-2xl font-extrabold text-[#a85566]">
+                  {formatPrice(
+                    selectedProduct.price
+                  )}
+                </p>
+
+                {/* INFORMATION GRID */}
+
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+
+                  {/* AVAILABILITY */}
+
+                  <div className="rounded-[20px] border border-[#dce7de] bg-[#f3f8f1] p-4">
+
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#71806d]">
+                      Availability
+                    </p>
+
+                    <p className="mt-1 text-sm font-extrabold text-[#55704d]">
+                      {selectedProduct.stock_quantity > 0
+                        ? "Available"
+                        : "Currently unavailable"}
+                    </p>
+
+                  </div>
+
+                  {/* PRODUCT CODE */}
+
+                  <div className="rounded-[20px] border border-[#eadfe0] bg-white p-4">
+
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#9b8e91]">
+                      Product code
+                    </p>
+
+                    <p className="mt-1 break-all text-sm font-extrabold text-[#4d4245]">
+                      {selectedProduct.barcode ||
+                        "Not available"}
+                    </p>
+
+                  </div>
+
+                </div>
+
+                {/* PRODUCT DATE */}
+
+                <div className="mt-3 rounded-[20px] border border-[#eadfe0] bg-white p-4">
+
+                  <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#9b8e91]">
+                    Product information
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-[#887c80]">
+                    This product is available through
+                    Ward Cosmetics. Add it to your cart
+                    to include it in your order.
+                  </p>
+
+                </div>
+
+                {/* ACTIONS */}
+
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+
+                  <button
+                    type="button"
+                    disabled={
+                      selectedProduct.stock_quantity <= 0
+                    }
+                    onClick={() => {
+                      addToCart(selectedProduct);
+                      setSelectedProduct(null);
+                    }}
+                    className={`flex-1 rounded-[19px] px-5 py-4 text-sm font-extrabold transition ${
+                      selectedProduct.stock_quantity <= 0
+                        ? "cursor-not-allowed bg-[#eee9e9] text-[#aaa0a2]"
+                        : "bg-[#b96070] text-white shadow-[0_10px_25px_rgba(185,96,112,0.20)] hover:-translate-y-0.5 hover:bg-[#a95263]"
+                    }`}
+                  >
+                    {selectedProduct.stock_quantity <= 0
+                      ? "Out of stock"
+                      : "Add to cart"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedProduct(null)
+                    }
+                    className="rounded-[19px] border border-[#e7dddd] bg-white px-5 py-4 text-sm font-extrabold text-[#665b5e] transition hover:bg-[#f7f3f2]"
+                  >
+                    Continue shopping
+                  </button>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ======================================================
           CART DRAWER
       ====================================================== */}
 
       {cartOpen && (
         <div
           className="fixed inset-0 z-[100] bg-[#29302b]/30 backdrop-blur-[3px]"
-          onClick={() => setCartOpen(false)}
+          onClick={() =>
+            setCartOpen(false)
+          }
         >
           <aside
             className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-[#fbf8f7] shadow-[-15px_0_50px_rgba(60,70,62,0.14)]"
@@ -1152,7 +1306,9 @@ export default function ShopPage() {
 
               <button
                 type="button"
-                onClick={() => setCartOpen(false)}
+                onClick={() =>
+                  setCartOpen(false)
+                }
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl text-[#705f63] shadow-sm"
               >
                 ×
@@ -1492,8 +1648,6 @@ export default function ShopPage() {
 
                   <div className="space-y-3">
 
-                    {/* CASH DELIVERY */}
-
                     <PaymentOption
                       selected={
                         paymentMethod ===
@@ -1509,8 +1663,6 @@ export default function ShopPage() {
                       icon="💵"
                     />
 
-                    {/* WHISH */}
-
                     <PaymentOption
                       selected={
                         paymentMethod === "whish"
@@ -1524,8 +1676,6 @@ export default function ShopPage() {
                       description={`Send the payment to ${WHISH_NAME} — ${WHISH_PHONE}. $2 delivery fee.`}
                       icon="📱"
                     />
-
-                    {/* STORE */}
 
                     <PaymentOption
                       selected={
