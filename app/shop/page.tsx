@@ -20,6 +20,7 @@ type Product = {
   id: string;
   brand: string | null;
   name: string;
+  description: string | null;
   price: number;
   stock_quantity: number;
   image_url: string | null;
@@ -93,22 +94,32 @@ export default function ShopPage() {
       const { data, error: productsError } = await supabase
         .from("products")
         .select(
-          "id, brand, name, price, stock_quantity, image_url, barcode, created_at"
+          "id, brand, name, description, price, stock_quantity, image_url, barcode, created_at"
         )
         .order("created_at", {
           ascending: false,
         });
 
       if (productsError) {
-        console.error("Error loading products:", productsError);
+        console.error(
+          "Error loading products:",
+          productsError
+        );
+
         setError("Unable to load products.");
         return;
       }
 
       setProducts((data || []) as Product[]);
     } catch (err) {
-      console.error("Error loading products:", err);
-      setError("Something went wrong while loading products.");
+      console.error(
+        "Error loading products:",
+        err
+      );
+
+      setError(
+        "Something went wrong while loading products."
+      );
     } finally {
       setLoading(false);
     }
@@ -139,35 +150,50 @@ export default function ShopPage() {
   const displayedProducts = useMemo(() => {
     let result = [...products];
 
-    const searchValue = search.trim().toLowerCase();
+    const searchValue =
+      search.trim().toLowerCase();
 
     if (searchValue) {
       result = result.filter((product) => {
-        const name = product.name?.toLowerCase() || "";
-        const brand = product.brand?.toLowerCase() || "";
-        const barcode = product.barcode?.toLowerCase() || "";
+        const name =
+          product.name?.toLowerCase() || "";
+
+        const brand =
+          product.brand?.toLowerCase() || "";
+
+        const barcode =
+          product.barcode?.toLowerCase() || "";
+
+        const description =
+          product.description?.toLowerCase() || "";
 
         return (
           name.includes(searchValue) ||
           brand.includes(searchValue) ||
-          barcode.includes(searchValue)
+          barcode.includes(searchValue) ||
+          description.includes(searchValue)
         );
       });
     }
 
     if (category !== "all") {
       result = result.filter(
-        (product) => product.brand === category
+        (product) =>
+          product.brand === category
       );
     }
 
     switch (sort) {
       case "price_low":
-        result.sort((a, b) => a.price - b.price);
+        result.sort(
+          (a, b) => a.price - b.price
+        );
         break;
 
       case "price_high":
-        result.sort((a, b) => b.price - a.price);
+        result.sort(
+          (a, b) => b.price - a.price
+        );
         break;
 
       case "name_az":
@@ -184,8 +210,11 @@ export default function ShopPage() {
 
       case "in_stock":
         result.sort((a, b) => {
-          const aStock = a.stock_quantity > 0 ? 1 : 0;
-          const bStock = b.stock_quantity > 0 ? 1 : 0;
+          const aStock =
+            a.stock_quantity > 0 ? 1 : 0;
+
+          const bStock =
+            b.stock_quantity > 0 ? 1 : 0;
 
           return bStock - aStock;
         });
@@ -193,8 +222,11 @@ export default function ShopPage() {
 
       case "out_of_stock":
         result.sort((a, b) => {
-          const aStock = a.stock_quantity > 0 ? 1 : 0;
-          const bStock = b.stock_quantity > 0 ? 1 : 0;
+          const aStock =
+            a.stock_quantity > 0 ? 1 : 0;
+
+          const bStock =
+            b.stock_quantity > 0 ? 1 : 0;
 
           return aStock - bStock;
         });
@@ -203,7 +235,8 @@ export default function ShopPage() {
       case "stock":
         result.sort(
           (a, b) =>
-            b.stock_quantity - a.stock_quantity
+            b.stock_quantity -
+            a.stock_quantity
         );
         break;
 
@@ -211,14 +244,23 @@ export default function ShopPage() {
       default:
         result.sort(
           (a, b) =>
-            new Date(b.created_at).getTime() -
-            new Date(a.created_at).getTime()
+            new Date(
+              b.created_at
+            ).getTime() -
+            new Date(
+              a.created_at
+            ).getTime()
         );
         break;
     }
 
     return result;
-  }, [products, search, category, sort]);
+  }, [
+    products,
+    search,
+    category,
+    sort,
+  ]);
 
   // ============================================================
   // CART TOTALS
@@ -226,7 +268,8 @@ export default function ShopPage() {
 
   const cartCount = useMemo(() => {
     return cart.reduce(
-      (sum, item) => sum + item.quantity,
+      (sum, item) =>
+        sum + item.quantity,
       0
     );
   }, [cart]);
@@ -235,7 +278,8 @@ export default function ShopPage() {
     return cart.reduce(
       (sum, item) =>
         sum +
-        Number(item.product.price) * item.quantity,
+        Number(item.product.price) *
+          item.quantity,
       0
     );
   }, [cart]);
@@ -245,7 +289,8 @@ export default function ShopPage() {
       ? 0
       : DELIVERY_FEE;
 
-  const total = subtotal + deliveryFee;
+  const total =
+    subtotal + deliveryFee;
 
   // ============================================================
   // ADD TO CART
@@ -259,12 +304,14 @@ export default function ShopPage() {
       setError(
         `${product.name} is currently out of stock.`
       );
+
       return;
     }
 
     setCart((current) => {
       const existing = current.find(
-        (item) => item.product.id === product.id
+        (item) =>
+          item.product.id === product.id
       );
 
       if (existing) {
@@ -276,10 +323,12 @@ export default function ShopPage() {
         }
 
         return current.map((item) =>
-          item.product.id === product.id
+          item.product.id ===
+          product.id
             ? {
                 ...item,
-                quantity: item.quantity + 1,
+                quantity:
+                  item.quantity + 1,
               }
             : item
         );
@@ -299,10 +348,15 @@ export default function ShopPage() {
   // CHANGE CART QUANTITY
   // ============================================================
 
-  function increaseQuantity(productId: string) {
+  function increaseQuantity(
+    productId: string
+  ) {
     setCart((current) =>
       current.map((item) => {
-        if (item.product.id !== productId) {
+        if (
+          item.product.id !==
+          productId
+        ) {
           return item;
         }
 
@@ -315,33 +369,46 @@ export default function ShopPage() {
 
         return {
           ...item,
-          quantity: item.quantity + 1,
+          quantity:
+            item.quantity + 1,
         };
       })
     );
   }
 
-  function decreaseQuantity(productId: string) {
+  function decreaseQuantity(
+    productId: string
+  ) {
     setCart((current) =>
       current
         .map((item) => {
-          if (item.product.id !== productId) {
+          if (
+            item.product.id !==
+            productId
+          ) {
             return item;
           }
 
           return {
             ...item,
-            quantity: item.quantity - 1,
+            quantity:
+              item.quantity - 1,
           };
         })
-        .filter((item) => item.quantity > 0)
+        .filter(
+          (item) => item.quantity > 0
+        )
     );
   }
 
-  function removeFromCart(productId: string) {
+  function removeFromCart(
+    productId: string
+  ) {
     setCart((current) =>
       current.filter(
-        (item) => item.product.id !== productId
+        (item) =>
+          item.product.id !==
+          productId
       )
     );
   }
@@ -399,7 +466,9 @@ export default function ShopPage() {
     }
 
     if (!customerPhone.trim()) {
-      setError("Please enter your phone number.");
+      setError(
+        "Please enter your phone number."
+      );
       return;
     }
 
@@ -409,7 +478,8 @@ export default function ShopPage() {
     }
 
     if (
-      paymentMethod !== "cash_at_store" &&
+      paymentMethod !==
+        "cash_at_store" &&
       !customerAddress.trim()
     ) {
       setError(
@@ -431,6 +501,10 @@ export default function ShopPage() {
     setPlacingOrder(true);
 
     try {
+      // ========================================================
+      // VERIFY CURRENT STOCK
+      // ========================================================
+
       const productIds = cart.map(
         (item) => item.product.id
       );
@@ -462,7 +536,8 @@ export default function ShopPage() {
         const currentProduct =
           currentProducts?.find(
             (product) =>
-              product.id === item.product.id
+              product.id ===
+              item.product.id
           );
 
         if (!currentProduct) {
@@ -485,21 +560,37 @@ export default function ShopPage() {
         }
       }
 
+      // ========================================================
+      // PREPARE ORDER ITEMS
+      // ========================================================
+
       const items = cart.map((item) => ({
-        product_id: item.product.id,
-        product_name: item.product.name,
-        quantity: item.quantity,
-        unit_price: Number(item.product.price),
+        product_id:
+          item.product.id,
+
+        product_name:
+          item.product.name,
+
+        quantity:
+          item.quantity,
+
+        unit_price:
+          Number(item.product.price),
+
         total:
           Number(item.product.price) *
           item.quantity,
       }));
 
-      const paymentMethodValue = paymentMethod;
+      const paymentMethodValue =
+        paymentMethod;
 
-      let finalNotes = notes.trim();
+      let finalNotes =
+        notes.trim();
 
-      if (paymentMethod === "whish") {
+      if (
+        paymentMethod === "whish"
+      ) {
         const whishText =
           `Whish transaction/reference: ${whishReference.trim()}`;
 
@@ -508,7 +599,10 @@ export default function ShopPage() {
           : whishText;
       }
 
-      if (paymentMethod === "cash_at_store") {
+      if (
+        paymentMethod ===
+        "cash_at_store"
+      ) {
         const pickupText =
           "Customer will collect the order at the store and pay cash.";
 
@@ -518,45 +612,57 @@ export default function ShopPage() {
       }
 
       const finalAddress =
-        paymentMethod === "cash_at_store"
-          ? customerAddress.trim() || null
+        paymentMethod ===
+        "cash_at_store"
+          ? customerAddress.trim() ||
+            null
           : customerAddress.trim();
 
-      const { data, error: orderError } =
-        await supabase.rpc(
-          "create_cosmetics_order",
-          {
-            p_customer_name:
-              customerName.trim(),
+      // ========================================================
+      // CREATE ORDER
+      // ========================================================
 
-            p_customer_phone:
-              customerPhone.trim(),
+      const {
+        data,
+        error: orderError,
+      } = await supabase.rpc(
+        "create_cosmetics_order",
+        {
+          p_customer_name:
+            customerName.trim(),
 
-            p_customer_city:
-              customerCity.trim(),
+          p_customer_phone:
+            customerPhone.trim(),
 
-            p_customer_address:
-              finalAddress,
+          p_customer_city:
+            customerCity.trim(),
 
-            p_notes:
-              finalNotes || null,
+          p_customer_address:
+            finalAddress,
 
-            p_payment_method:
-              paymentMethodValue,
+          p_notes:
+            finalNotes || null,
 
-            p_subtotal:
-              subtotal,
+          p_payment_method:
+            paymentMethodValue,
 
-            p_delivery_fee:
-              deliveryFee,
+          p_subtotal:
+            subtotal,
 
-            p_total:
-              total,
+          p_delivery_fee:
+            deliveryFee,
 
-            p_items:
-              items,
-          }
-        );
+          p_total:
+            total,
+
+          p_items:
+            items,
+        }
+      );
+
+      // ========================================================
+      // ORDER CREATION FAILED
+      // ========================================================
 
       if (orderError) {
         console.error(
@@ -575,6 +681,137 @@ export default function ShopPage() {
         data
       );
 
+      // ========================================================
+      // GET CREATED ORDER ID
+      // ========================================================
+
+      let createdOrderId = "";
+
+      if (
+        typeof data === "string"
+      ) {
+        createdOrderId = data;
+      } else if (
+        Array.isArray(data)
+      ) {
+        const firstRow = data[0];
+
+        if (
+          firstRow &&
+          typeof firstRow ===
+            "object" &&
+          "id" in firstRow
+        ) {
+          createdOrderId =
+            String(
+              (
+                firstRow as {
+                  id: unknown;
+                }
+              ).id
+            );
+        }
+
+        if (
+          !createdOrderId &&
+          firstRow &&
+          typeof firstRow ===
+            "object" &&
+          "order_id" in firstRow
+        ) {
+          createdOrderId =
+            String(
+              (
+                firstRow as {
+                  order_id: unknown;
+                }
+              ).order_id
+            );
+        }
+      } else if (
+        data &&
+        typeof data ===
+          "object"
+      ) {
+        if ("id" in data) {
+          createdOrderId =
+            String(
+              (
+                data as {
+                  id: unknown;
+                }
+              ).id
+            );
+        } else if (
+          "order_id" in data
+        ) {
+          createdOrderId =
+            String(
+              (
+                data as {
+                  order_id: unknown;
+                }
+              ).order_id
+            );
+        }
+      }
+
+      console.log(
+        "Created order ID:",
+        createdOrderId
+      );
+
+      // ========================================================
+      // SEND PUSH NOTIFICATION
+      // ========================================================
+      //
+      // IMPORTANT:
+      // The order has already been created.
+      // If push notification fails, the order
+      // remains successful.
+      // ========================================================
+
+      try {
+        const {
+          data: notificationData,
+          error: notificationError,
+        } = await supabase.functions.invoke(
+          "send-order-notification",
+          {
+            body: {
+              customerName:
+                customerName.trim(),
+
+              orderId:
+                createdOrderId,
+            },
+          }
+        );
+
+        if (notificationError) {
+          console.error(
+            "Push notification error:",
+            notificationError
+          );
+        } else {
+          console.log(
+            "Order notification sent:",
+            notificationData
+          );
+        }
+      } catch (
+        notificationError
+      ) {
+        console.error(
+          "Push notification failed:",
+          notificationError
+        );
+      }
+
+      // ========================================================
+      // CLEAR CART / CHECKOUT
+      // ========================================================
+
       setCart([]);
       setCheckoutOpen(false);
       setCartOpen(false);
@@ -590,9 +827,17 @@ export default function ShopPage() {
         "cash_on_delivery"
       );
 
+      // ========================================================
+      // SUCCESS
+      // ========================================================
+
       setSuccess(
         "Your order has been placed successfully!"
       );
+
+      // ========================================================
+      // REFRESH PRODUCTS
+      // ========================================================
 
       await loadProducts();
 
@@ -620,8 +865,12 @@ export default function ShopPage() {
   // FORMAT PRICE
   // ============================================================
 
-  function formatPrice(value: number) {
-    return `$${Number(value).toFixed(2)}`;
+  function formatPrice(
+    value: number
+  ) {
+    return `$${Number(value).toFixed(
+      2
+    )}`;
   }
 
   // ============================================================
@@ -633,6 +882,7 @@ export default function ShopPage() {
       <main className="min-h-screen bg-[#fbf8f7] px-5 py-12 text-[#342d2f]">
         <div className="mx-auto flex min-h-[70vh] max-w-6xl items-center justify-center">
           <div className="text-center">
+
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl shadow-sm">
               🛍️
             </div>
@@ -648,6 +898,7 @@ export default function ShopPage() {
             <div className="mx-auto mt-5 h-1.5 w-24 overflow-hidden rounded-full bg-[#dfeeda]">
               <div className="h-full w-1/2 animate-pulse rounded-full bg-[#b96070]" />
             </div>
+
           </div>
         </div>
       </main>
@@ -669,20 +920,24 @@ export default function ShopPage() {
         <div className="mx-auto flex min-h-[76px] max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
 
           <div>
+
             <div className="inline-flex items-center gap-2 rounded-full bg-[#f5dfe4] px-3 py-1.5">
+
               <span className="h-1.5 w-1.5 rounded-full bg-[#b45b6c]" />
 
               <span className="text-[9px] font-extrabold uppercase tracking-[0.18em] text-[#9d4f60]">
                 Ward Cosmetics
               </span>
+
             </div>
 
             <h1 className="mt-2 text-xl font-extrabold tracking-tight sm:text-2xl">
               Shop
             </h1>
+
           </div>
 
-          {/* CART BUTTON */}
+          {/* CART */}
 
           <button
             type="button"
@@ -692,6 +947,7 @@ export default function ShopPage() {
             }}
             className="relative flex h-12 items-center gap-2 rounded-2xl bg-[#b96070] px-4 text-sm font-extrabold text-white shadow-[0_8px_25px_rgba(185,96,112,0.20)] transition hover:-translate-y-0.5 hover:bg-[#a95263]"
           >
+
             <span className="text-base">
               🛒
             </span>
@@ -705,6 +961,7 @@ export default function ShopPage() {
                 {cartCount}
               </span>
             )}
+
           </button>
 
         </div>
@@ -716,12 +973,15 @@ export default function ShopPage() {
 
         {success && (
           <div className="mb-6 rounded-[24px] border border-[#cfe0c9] bg-[#f1f8ef] p-5">
+
             <div className="flex items-start gap-3">
+
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#dfeeda] font-extrabold text-[#55704d]">
                 ✓
               </div>
 
               <div>
+
                 <p className="text-sm font-extrabold text-[#55704d]">
                   Order placed
                 </p>
@@ -729,8 +989,11 @@ export default function ShopPage() {
                 <p className="mt-1 text-xs leading-5 text-[#71806d]">
                   {success}
                 </p>
+
               </div>
+
             </div>
+
           </div>
         )}
 
@@ -738,12 +1001,15 @@ export default function ShopPage() {
 
         {error && (
           <div className="mb-6 rounded-[24px] border border-[#ecd0d5] bg-[#fdf0f2] p-5">
+
             <div className="flex items-start gap-3">
+
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f5dfe4] font-extrabold text-[#a85566]">
                 !
               </div>
 
               <div>
+
                 <p className="text-sm font-extrabold text-[#9d4f60]">
                   Something went wrong
                 </p>
@@ -751,8 +1017,11 @@ export default function ShopPage() {
                 <p className="mt-1 text-xs leading-5 text-[#a76c76]">
                   {error}
                 </p>
+
               </div>
+
             </div>
+
           </div>
         )}
 
@@ -793,6 +1062,7 @@ export default function ShopPage() {
             {/* SEARCH */}
 
             <div className="relative">
+
               <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base text-[#9d9194]">
                 ⌕
               </span>
@@ -801,11 +1071,14 @@ export default function ShopPage() {
                 type="search"
                 value={search}
                 onChange={(event) =>
-                  setSearch(event.target.value)
+                  setSearch(
+                    event.target.value
+                  )
                 }
                 placeholder="Search products, brands or barcode..."
                 className="w-full rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] py-3.5 pl-11 pr-4 text-sm font-medium outline-none transition placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:bg-white focus:ring-4 focus:ring-[#f5dfe4]"
               />
+
             </div>
 
             {/* CATEGORY */}
@@ -813,19 +1086,28 @@ export default function ShopPage() {
             <select
               value={category}
               onChange={(event) =>
-                setCategory(event.target.value)
+                setCategory(
+                  event.target.value
+                )
               }
               className="rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] px-4 py-3.5 text-sm font-semibold text-[#4d4245] outline-none focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
             >
+
               <option value="all">
                 All brands
               </option>
 
-              {categories.map((brand) => (
-                <option key={brand} value={brand}>
-                  {brand}
-                </option>
-              ))}
+              {categories.map(
+                (brand) => (
+                  <option
+                    key={brand}
+                    value={brand}
+                  >
+                    {brand}
+                  </option>
+                )
+              )}
+
             </select>
 
             {/* SORT */}
@@ -833,10 +1115,13 @@ export default function ShopPage() {
             <select
               value={sort}
               onChange={(event) =>
-                setSort(event.target.value)
+                setSort(
+                  event.target.value
+                )
               }
               className="rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] px-4 py-3.5 text-sm font-semibold text-[#4d4245] outline-none focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
             >
+
               <option value="featured">
                 Newest
               </option>
@@ -868,6 +1153,7 @@ export default function ShopPage() {
               <option value="stock">
                 Most Available
               </option>
+
             </select>
 
           </div>
@@ -875,15 +1161,21 @@ export default function ShopPage() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
 
             <p className="text-xs font-semibold text-[#887c80]">
+
               Showing{" "}
+
               <span className="font-extrabold text-[#5c4f53]">
                 {displayedProducts.length}
               </span>{" "}
+
               of{" "}
+
               <span className="font-extrabold text-[#5c4f53]">
                 {products.length}
               </span>{" "}
+
               products
+
             </p>
 
             {(search ||
@@ -894,7 +1186,9 @@ export default function ShopPage() {
                 onClick={() => {
                   setSearch("");
                   setCategory("all");
-                  setSort("featured");
+                  setSort(
+                    "featured"
+                  );
                 }}
                 className="text-xs font-extrabold text-[#a85566] hover:underline"
               >
@@ -908,8 +1202,10 @@ export default function ShopPage() {
 
         {/* PRODUCTS */}
 
-        {displayedProducts.length === 0 ? (
+        {displayedProducts.length ===
+        0 ? (
           <section className="mt-6 rounded-[28px] border border-[#eadfe0] bg-white p-10 text-center">
+
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#f5dfe4] text-2xl">
               🔍
             </div>
@@ -919,137 +1215,161 @@ export default function ShopPage() {
             </h3>
 
             <p className="mt-2 text-sm text-[#887c80]">
-              Try a different search or filter.
+              Try a different search or
+              filter.
             </p>
+
           </section>
         ) : (
           <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
 
-            {displayedProducts.map((product) => {
-              const outOfStock =
-                product.stock_quantity <= 0;
+            {displayedProducts.map(
+              (product) => {
+                const outOfStock =
+                  product.stock_quantity <=
+                  0;
 
-              const cartItem = cart.find(
-                (item) =>
-                  item.product.id === product.id
-              );
+                const cartItem =
+                  cart.find(
+                    (item) =>
+                      item.product.id ===
+                      product.id
+                  );
 
-              return (
-                <article
-                  key={product.id}
-                  onClick={() =>
-                    setSelectedProduct(product)
-                  }
-                  className="group cursor-pointer overflow-hidden rounded-[22px] border border-[#eadfe0] bg-white shadow-[0_8px_30px_rgba(82,57,61,0.05)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(82,57,61,0.09)] sm:rounded-[28px]"
-                >
+                return (
+                  <article
+                    key={product.id}
+                    onClick={() =>
+                      setSelectedProduct(
+                        product
+                      )
+                    }
+                    className="group cursor-pointer overflow-hidden rounded-[22px] border border-[#eadfe0] bg-white shadow-[0_8px_30px_rgba(82,57,61,0.05)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(82,57,61,0.09)] sm:rounded-[28px]"
+                  >
 
-                  {/* IMAGE */}
+                    {/* IMAGE */}
 
-                  <div className="relative aspect-square overflow-hidden bg-[#f7f3f2]">
+                    <div className="relative aspect-square overflow-hidden bg-[#f7f3f2]">
 
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
-                          outOfStock
-                            ? "opacity-55 grayscale-[20%]"
-                            : ""
-                        }`}
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <span className="text-4xl opacity-40 sm:text-5xl">
-                          🛍️
-                        </span>
-                      </div>
-                    )}
-
-                    {/* STOCK STATUS */}
-
-                    <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
-
-                      {outOfStock ? (
-                        <span className="rounded-full bg-[#342d2f]/90 px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[9px]">
-                          Out of stock
-                        </span>
-                      ) : product.stock_quantity <= 5 ? (
-                        <span className="rounded-full bg-[#fff1d9] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#9a6a27] sm:px-3 sm:py-1.5 sm:text-[9px]">
-                          Limited stock
-                        </span>
+                      {product.image_url ? (
+                        <img
+                          src={
+                            product.image_url
+                          }
+                          alt={
+                            product.name
+                          }
+                          className={`h-full w-full object-cover transition duration-500 group-hover:scale-105 ${
+                            outOfStock
+                              ? "opacity-55 grayscale-[20%]"
+                              : ""
+                          }`}
+                        />
                       ) : (
-                        <span className="rounded-full bg-[#e9f4e6] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#55704d] sm:px-3 sm:py-1.5 sm:text-[9px]">
-                          In stock
-                        </span>
+                        <div className="flex h-full w-full items-center justify-center">
+                          <span className="text-4xl opacity-40 sm:text-5xl">
+                            🛍️
+                          </span>
+                        </div>
+                      )}
+
+                      {/* STOCK STATUS */}
+
+                      <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
+
+                        {outOfStock ? (
+                          <span className="rounded-full bg-[#342d2f]/90 px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[9px]">
+                            Out of stock
+                          </span>
+                        ) : product.stock_quantity <=
+                          5 ? (
+                          <span className="rounded-full bg-[#fff1d9] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#9a6a27] sm:px-3 sm:py-1.5 sm:text-[9px]">
+                            Limited stock
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-[#e9f4e6] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#55704d] sm:px-3 sm:py-1.5 sm:text-[9px]">
+                            In stock
+                          </span>
+                        )}
+
+                      </div>
+
+                      {/* CART QUANTITY */}
+
+                      {cartItem && (
+                        <div className="absolute right-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-[#b96070] px-2 text-[9px] font-extrabold text-white shadow-md sm:right-3 sm:top-3 sm:h-8 sm:min-w-8">
+                          {cartItem.quantity}
+                        </div>
                       )}
 
                     </div>
 
-                    {/* CART QUANTITY */}
+                    {/* CONTENT */}
 
-                    {cartItem && (
-                      <div className="absolute right-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-full bg-[#b96070] px-2 text-[9px] font-extrabold text-white shadow-md sm:right-3 sm:top-3 sm:h-8 sm:min-w-8">
-                        {cartItem.quantity}
-                      </div>
-                    )}
+                    <div className="p-3 sm:p-5">
 
-                  </div>
-
-                  {/* CONTENT */}
-
-                  <div className="p-3 sm:p-5">
-
-                    {product.brand && (
-                      <p className="truncate text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#a85566] sm:text-[9px]">
-                        {product.brand}
-                      </p>
-                    )}
-
-                    <h3 className="mt-1.5 line-clamp-2 min-h-[38px] text-xs font-extrabold leading-4 text-[#3b3335] sm:min-h-[44px] sm:text-sm sm:leading-5">
-                      {product.name}
-                    </h3>
-
-                    <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
-
-                      <div>
-                        <p className="text-base font-extrabold text-[#a85566] sm:text-lg">
-                          {formatPrice(product.price)}
+                      {product.brand && (
+                        <p className="truncate text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#a85566] sm:text-[9px]">
+                          {product.brand}
                         </p>
+                      )}
+
+                      <h3 className="mt-1.5 line-clamp-2 min-h-[38px] text-xs font-extrabold leading-4 text-[#3b3335] sm:min-h-[44px] sm:text-sm sm:leading-5">
+                        {product.name}
+                      </h3>
+
+                      <div className="mt-3 flex flex-col gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between">
+
+                        <div>
+
+                          <p className="text-base font-extrabold text-[#a85566] sm:text-lg">
+                            {formatPrice(
+                              product.price
+                            )}
+                          </p>
+
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={
+                            outOfStock
+                          }
+                          onClick={(
+                            event
+                          ) => {
+                            event.stopPropagation();
+
+                            addToCart(
+                              product
+                            );
+                          }}
+                          className={`flex h-10 w-full items-center justify-center rounded-xl px-2 text-[10px] font-extrabold transition sm:h-11 sm:w-auto sm:rounded-2xl sm:px-4 sm:text-xs ${
+                            outOfStock
+                              ? "cursor-not-allowed bg-[#eee9e9] text-[#aaa0a2]"
+                              : "bg-[#b96070] text-white shadow-[0_7px_18px_rgba(185,96,112,0.18)] hover:-translate-y-0.5 hover:bg-[#a95263]"
+                          }`}
+                        >
+                          {outOfStock
+                            ? "Unavailable"
+                            : cartItem
+                            ? "Add another"
+                            : "Add to cart"}
+                        </button>
+
                       </div>
 
-                      <button
-                        type="button"
-                        disabled={outOfStock}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          addToCart(product);
-                        }}
-                        className={`flex h-10 w-full items-center justify-center rounded-xl px-2 text-[10px] font-extrabold transition sm:h-11 sm:w-auto sm:rounded-2xl sm:px-4 sm:text-xs ${
-                          outOfStock
-                            ? "cursor-not-allowed bg-[#eee9e9] text-[#aaa0a2]"
-                            : "bg-[#b96070] text-white shadow-[0_7px_18px_rgba(185,96,112,0.18)] hover:-translate-y-0.5 hover:bg-[#a95263]"
-                        }`}
-                      >
-                        {outOfStock
-                          ? "Unavailable"
-                          : cartItem
-                          ? "Add another"
-                          : "Add to cart"}
-                      </button>
+                      <p className="mt-3 text-center text-[9px] font-semibold text-[#b0a5a7]">
+                        Tap to view product
+                        details
+                      </p>
 
                     </div>
 
-                    {/* TAP HINT */}
-
-                    <p className="mt-3 text-center text-[9px] font-semibold text-[#b0a5a7]">
-                      Tap to view product details
-                    </p>
-
-                  </div>
-
-                </article>
-              );
-            })}
+                  </article>
+                );
+              }
+            )}
 
           </section>
         )}
@@ -1091,7 +1411,7 @@ export default function ShopPage() {
               }
             >
 
-              {/* CLOSE BUTTON */}
+              {/* CLOSE */}
 
               <button
                 type="button"
@@ -1104,16 +1424,21 @@ export default function ShopPage() {
                 ×
               </button>
 
-              {/* PRODUCT IMAGE */}
+              {/* IMAGE */}
 
               <div className="relative aspect-square w-full bg-[#f7f3f2] sm:aspect-[4/3]">
 
                 {selectedProduct.image_url ? (
                   <img
-                    src={selectedProduct.image_url}
-                    alt={selectedProduct.name}
+                    src={
+                      selectedProduct.image_url
+                    }
+                    alt={
+                      selectedProduct.name
+                    }
                     className={`h-full w-full object-cover ${
-                      selectedProduct.stock_quantity <= 0
+                      selectedProduct.stock_quantity <=
+                      0
                         ? "opacity-60"
                         : ""
                     }`}
@@ -1126,15 +1451,17 @@ export default function ShopPage() {
                   </div>
                 )}
 
-                {/* STOCK BADGE */}
+                {/* STOCK */}
 
                 <div className="absolute left-4 top-4">
 
-                  {selectedProduct.stock_quantity <= 0 ? (
+                  {selectedProduct.stock_quantity <=
+                  0 ? (
                     <span className="rounded-full bg-[#342d2f]/90 px-4 py-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-white">
                       Out of stock
                     </span>
-                  ) : selectedProduct.stock_quantity <= 5 ? (
+                  ) : selectedProduct.stock_quantity <=
+                    5 ? (
                     <span className="rounded-full bg-[#fff1d9] px-4 py-2 text-[9px] font-extrabold uppercase tracking-[0.12em] text-[#9a6a27]">
                       Limited stock
                     </span>
@@ -1148,11 +1475,9 @@ export default function ShopPage() {
 
               </div>
 
-              {/* PRODUCT INFORMATION */}
+              {/* INFORMATION */}
 
               <div className="p-5 sm:p-7">
-
-                {/* BRAND */}
 
                 {selectedProduct.brand && (
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#a85566]">
@@ -1160,19 +1485,33 @@ export default function ShopPage() {
                   </p>
                 )}
 
-                {/* NAME */}
-
                 <h2 className="mt-2 pr-8 text-2xl font-extrabold tracking-tight text-[#342d2f] sm:text-3xl">
                   {selectedProduct.name}
                 </h2>
-
-                {/* PRICE */}
 
                 <p className="mt-3 text-2xl font-extrabold text-[#a85566]">
                   {formatPrice(
                     selectedProduct.price
                   )}
                 </p>
+
+                {/* DESCRIPTION */}
+
+                {selectedProduct.description?.trim() && (
+                  <div className="mt-6 rounded-[20px] border border-[#eadfe0] bg-white p-4">
+
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-[#9b8e91]">
+                      Description
+                    </p>
+
+                    <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[#665b5e]">
+                      {
+                        selectedProduct.description
+                      }
+                    </p>
+
+                  </div>
+                )}
 
                 {/* INFORMATION GRID */}
 
@@ -1187,7 +1526,8 @@ export default function ShopPage() {
                     </p>
 
                     <p className="mt-1 text-sm font-extrabold text-[#55704d]">
-                      {selectedProduct.stock_quantity > 0
+                      {selectedProduct.stock_quantity >
+                      0
                         ? "Available"
                         : "Currently unavailable"}
                     </p>
@@ -1211,7 +1551,7 @@ export default function ShopPage() {
 
                 </div>
 
-                {/* PRODUCT DATE */}
+                {/* PRODUCT INFORMATION */}
 
                 <div className="mt-3 rounded-[20px] border border-[#eadfe0] bg-white p-4">
 
@@ -1220,9 +1560,10 @@ export default function ShopPage() {
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-[#887c80]">
-                    This product is available through
-                    Ward Cosmetics. Add it to your cart
-                    to include it in your order.
+                    This product is available
+                    through Ward Cosmetics.
+                    Add it to your cart to
+                    include it in your order.
                   </p>
 
                 </div>
@@ -1234,19 +1575,27 @@ export default function ShopPage() {
                   <button
                     type="button"
                     disabled={
-                      selectedProduct.stock_quantity <= 0
+                      selectedProduct.stock_quantity <=
+                      0
                     }
                     onClick={() => {
-                      addToCart(selectedProduct);
-                      setSelectedProduct(null);
+                      addToCart(
+                        selectedProduct
+                      );
+
+                      setSelectedProduct(
+                        null
+                      );
                     }}
                     className={`flex-1 rounded-[19px] px-5 py-4 text-sm font-extrabold transition ${
-                      selectedProduct.stock_quantity <= 0
+                      selectedProduct.stock_quantity <=
+                      0
                         ? "cursor-not-allowed bg-[#eee9e9] text-[#aaa0a2]"
                         : "bg-[#b96070] text-white shadow-[0_10px_25px_rgba(185,96,112,0.20)] hover:-translate-y-0.5 hover:bg-[#a95263]"
                     }`}
                   >
-                    {selectedProduct.stock_quantity <= 0
+                    {selectedProduct.stock_quantity <=
+                    0
                       ? "Out of stock"
                       : "Add to cart"}
                   </button>
@@ -1254,7 +1603,9 @@ export default function ShopPage() {
                   <button
                     type="button"
                     onClick={() =>
-                      setSelectedProduct(null)
+                      setSelectedProduct(
+                        null
+                      )
                     }
                     className="rounded-[19px] border border-[#e7dddd] bg-white px-5 py-4 text-sm font-extrabold text-[#665b5e] transition hover:bg-[#f7f3f2]"
                   >
@@ -1283,6 +1634,7 @@ export default function ShopPage() {
             setCartOpen(false)
           }
         >
+
           <aside
             className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-[#fbf8f7] shadow-[-15px_0_50px_rgba(60,70,62,0.14)]"
             onClick={(event) =>
@@ -1295,6 +1647,7 @@ export default function ShopPage() {
             <div className="flex items-center justify-between border-b border-[#eadfe0] px-5 py-5">
 
               <div>
+
                 <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
                   Your selection
                 </p>
@@ -1302,6 +1655,7 @@ export default function ShopPage() {
                 <h2 className="mt-1 text-xl font-extrabold">
                   Shopping cart
                 </h2>
+
               </div>
 
               <button
@@ -1332,107 +1686,140 @@ export default function ShopPage() {
                   </h3>
 
                   <p className="mt-2 max-w-xs text-xs leading-5 text-[#887c80]">
-                    Add some products to get started.
+                    Add some products to get
+                    started.
                   </p>
 
                 </div>
               ) : (
                 <div className="space-y-3">
 
-                  {cart.map((item) => (
-                    <div
-                      key={item.product.id}
-                      className="rounded-[22px] border border-[#eadfe0] bg-white p-3"
-                    >
-                      <div className="flex gap-3">
+                  {cart.map(
+                    (item) => (
+                      <div
+                        key={
+                          item.product.id
+                        }
+                        className="rounded-[22px] border border-[#eadfe0] bg-white p-3"
+                      >
 
-                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[16px] bg-[#f7f3f2]">
+                        <div className="flex gap-3">
 
-                          {item.product.image_url ? (
-                            <img
-                              src={item.product.image_url}
-                              alt={item.product.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xl">
-                              🛍️
-                            </div>
-                          )}
+                          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[16px] bg-[#f7f3f2]">
 
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-
-                          {item.product.brand && (
-                            <p className="text-[8px] font-extrabold uppercase tracking-wide text-[#a85566]">
-                              {item.product.brand}
-                            </p>
-                          )}
-
-                          <p className="mt-1 line-clamp-2 text-xs font-extrabold leading-5">
-                            {item.product.name}
-                          </p>
-
-                          <p className="mt-1 text-sm font-extrabold text-[#a85566]">
-                            {formatPrice(
-                              item.product.price
+                            {item.product.image_url ? (
+                              <img
+                                src={
+                                  item
+                                    .product
+                                    .image_url
+                                }
+                                alt={
+                                  item
+                                    .product
+                                    .name
+                                }
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full items-center justify-center text-xl">
+                                🛍️
+                              </div>
                             )}
-                          </p>
 
-                          <div className="mt-2 flex items-center justify-between">
+                          </div>
 
-                            <div className="flex items-center rounded-xl bg-[#f7f3f2] p-1">
+                          <div className="min-w-0 flex-1">
+
+                            {item.product.brand && (
+                              <p className="text-[8px] font-extrabold uppercase tracking-wide text-[#a85566]">
+                                {
+                                  item
+                                    .product
+                                    .brand
+                                }
+                              </p>
+                            )}
+
+                            <p className="mt-1 line-clamp-2 text-xs font-extrabold leading-5">
+                              {
+                                item
+                                  .product
+                                  .name
+                              }
+                            </p>
+
+                            <p className="mt-1 text-sm font-extrabold text-[#a85566]">
+                              {formatPrice(
+                                item
+                                  .product
+                                  .price
+                              )}
+                            </p>
+
+                            <div className="mt-2 flex items-center justify-between">
+
+                              <div className="flex items-center rounded-xl bg-[#f7f3f2] p-1">
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    decreaseQuantity(
+                                      item
+                                        .product
+                                        .id
+                                    )
+                                  }
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-sm font-extrabold shadow-sm"
+                                >
+                                  −
+                                </button>
+
+                                <span className="w-8 text-center text-xs font-extrabold">
+                                  {
+                                    item.quantity
+                                  }
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    increaseQuantity(
+                                      item
+                                        .product
+                                        .id
+                                    )
+                                  }
+                                  className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-sm font-extrabold shadow-sm"
+                                >
+                                  +
+                                </button>
+
+                              </div>
 
                               <button
                                 type="button"
                                 onClick={() =>
-                                  decreaseQuantity(
-                                    item.product.id
+                                  removeFromCart(
+                                    item
+                                      .product
+                                      .id
                                   )
                                 }
-                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-sm font-extrabold shadow-sm"
+                                className="text-[10px] font-extrabold text-[#a85566] hover:underline"
                               >
-                                −
-                              </button>
-
-                              <span className="w-8 text-center text-xs font-extrabold">
-                                {item.quantity}
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  increaseQuantity(
-                                    item.product.id
-                                  )
-                                }
-                                className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-sm font-extrabold shadow-sm"
-                              >
-                                +
+                                Remove
                               </button>
 
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeFromCart(
-                                  item.product.id
-                                )
-                              }
-                              className="text-[10px] font-extrabold text-[#a85566] hover:underline"
-                            >
-                              Remove
-                            </button>
 
                           </div>
 
                         </div>
 
                       </div>
-                    </div>
-                  ))}
+                    )
+                  )}
 
                 </div>
               )}
@@ -1447,23 +1834,31 @@ export default function ShopPage() {
                 <div className="space-y-2 text-xs">
 
                   <div className="flex justify-between text-[#887c80]">
+
                     <span>
                       Subtotal
                     </span>
 
                     <span className="font-bold text-[#4d4245]">
-                      {formatPrice(subtotal)}
+                      {formatPrice(
+                        subtotal
+                      )}
                     </span>
+
                   </div>
 
                   <div className="flex justify-between text-[#887c80]">
+
                     <span>
                       Delivery
                     </span>
 
                     <span className="font-bold text-[#4d4245]">
-                      {formatPrice(deliveryFee)}
+                      {formatPrice(
+                        deliveryFee
+                      )}
                     </span>
+
                   </div>
 
                   <div className="my-3 border-t border-[#eee6e7]" />
@@ -1475,7 +1870,9 @@ export default function ShopPage() {
                     </span>
 
                     <span className="text-lg font-extrabold text-[#a85566]">
-                      {formatPrice(total)}
+                      {formatPrice(
+                        total
+                      )}
                     </span>
 
                   </div>
@@ -1484,7 +1881,9 @@ export default function ShopPage() {
 
                 <button
                   type="button"
-                  onClick={openCheckout}
+                  onClick={
+                    openCheckout
+                  }
                   className="mt-5 w-full rounded-[18px] bg-[#b96070] px-4 py-4 text-sm font-extrabold text-white shadow-[0_10px_25px_rgba(185,96,112,0.20)] transition hover:bg-[#a95263]"
                 >
                   Continue to checkout →
@@ -1494,6 +1893,7 @@ export default function ShopPage() {
             )}
 
           </aside>
+
         </div>
       )}
 
@@ -1527,6 +1927,7 @@ export default function ShopPage() {
                 <div className="flex items-center justify-between">
 
                   <div>
+
                     <p className="text-[9px] font-extrabold uppercase tracking-[0.16em] text-[#a85566]">
                       Almost there
                     </p>
@@ -1534,13 +1935,18 @@ export default function ShopPage() {
                     <h2 className="mt-1 text-xl font-extrabold">
                       Checkout
                     </h2>
+
                   </div>
 
                   <button
                     type="button"
-                    disabled={placingOrder}
+                    disabled={
+                      placingOrder
+                    }
                     onClick={() =>
-                      setCheckoutOpen(false)
+                      setCheckoutOpen(
+                        false
+                      )
                     }
                     className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f3f2] text-xl text-[#705f63]"
                   >
@@ -1578,8 +1984,9 @@ export default function ShopPage() {
                     {paymentMethod ===
                       "cash_at_store" && (
                       <p className="mt-1 text-xs leading-5 text-[#887c80]">
-                        You will collect your order
-                        from the store and pay cash.
+                        You will collect your
+                        order from the store and
+                        pay cash.
                       </p>
                     )}
 
@@ -1589,23 +1996,35 @@ export default function ShopPage() {
 
                     <CheckoutInput
                       label="Full name"
-                      value={customerName}
-                      onChange={setCustomerName}
+                      value={
+                        customerName
+                      }
+                      onChange={
+                        setCustomerName
+                      }
                       placeholder="Your name"
                     />
 
                     <CheckoutInput
                       label="Phone number"
-                      value={customerPhone}
-                      onChange={setCustomerPhone}
+                      value={
+                        customerPhone
+                      }
+                      onChange={
+                        setCustomerPhone
+                      }
                       placeholder="Your phone number"
                       type="tel"
                     />
 
                     <CheckoutInput
                       label="City"
-                      value={customerCity}
-                      onChange={setCustomerCity}
+                      value={
+                        customerCity
+                      }
+                      onChange={
+                        setCustomerCity
+                      }
                       placeholder="Your city"
                     />
 
@@ -1616,8 +2035,12 @@ export default function ShopPage() {
                           ? "Address (optional)"
                           : "Delivery address"
                       }
-                      value={customerAddress}
-                      onChange={setCustomerAddress}
+                      value={
+                        customerAddress
+                      }
+                      onChange={
+                        setCustomerAddress
+                      }
                       placeholder={
                         paymentMethod ===
                         "cash_at_store"
@@ -1641,7 +2064,8 @@ export default function ShopPage() {
                     </p>
 
                     <h3 className="mt-1 text-base font-extrabold">
-                      Choose how you'd like to pay
+                      Choose how you'd like to
+                      pay
                     </h3>
 
                   </div>
@@ -1665,7 +2089,8 @@ export default function ShopPage() {
 
                     <PaymentOption
                       selected={
-                        paymentMethod === "whish"
+                        paymentMethod ===
+                        "whish"
                       }
                       onClick={() =>
                         changePaymentMethod(
@@ -1694,7 +2119,7 @@ export default function ShopPage() {
 
                   </div>
 
-                  {/* WHISH INSTRUCTIONS */}
+                  {/* WHISH */}
 
                   {paymentMethod ===
                     "whish" && (
@@ -1721,10 +2146,13 @@ export default function ShopPage() {
                         <p className="mt-3 text-xs leading-5 text-[#806d70]">
                           Send{" "}
                           <strong>
-                            {formatPrice(total)}
+                            {formatPrice(
+                              total
+                            )}
                           </strong>{" "}
-                          through Whish, then enter your
-                          transaction/reference number below.
+                          through Whish, then enter
+                          your transaction/reference
+                          number below.
                         </p>
 
                       </div>
@@ -1732,15 +2160,21 @@ export default function ShopPage() {
                       <div className="mt-4">
 
                         <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
-                          Whish transaction/reference number
+                          Whish transaction/reference
+                          number
                         </label>
 
                         <input
                           type="text"
-                          value={whishReference}
-                          onChange={(event) =>
+                          value={
+                            whishReference
+                          }
+                          onChange={(
+                            event
+                          ) =>
                             setWhishReference(
-                              event.target.value
+                              event.target
+                                .value
                             )
                           }
                           placeholder="Enter transaction number"
@@ -1768,7 +2202,9 @@ export default function ShopPage() {
                   <textarea
                     value={notes}
                     onChange={(event) =>
-                      setNotes(event.target.value)
+                      setNotes(
+                        event.target.value
+                      )
                     }
                     rows={3}
                     placeholder="Anything we should know about your order?"
@@ -1784,6 +2220,7 @@ export default function ShopPage() {
                   <div className="flex items-center justify-between">
 
                     <div>
+
                       <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#55704d]">
                         Order summary
                       </p>
@@ -1794,10 +2231,13 @@ export default function ShopPage() {
                           ? "item"
                           : "items"}
                       </p>
+
                     </div>
 
                     <p className="text-xl font-extrabold text-[#55704d]">
-                      {formatPrice(total)}
+                      {formatPrice(
+                        total
+                      )}
                     </p>
 
                   </div>
@@ -1805,16 +2245,21 @@ export default function ShopPage() {
                   <div className="mt-4 space-y-2 border-t border-[#dce7de] pt-4 text-xs">
 
                     <div className="flex justify-between text-[#71806d]">
+
                       <span>
                         Subtotal
                       </span>
 
                       <span className="font-bold">
-                        {formatPrice(subtotal)}
+                        {formatPrice(
+                          subtotal
+                        )}
                       </span>
+
                     </div>
 
                     <div className="flex justify-between text-[#71806d]">
+
                       <span>
                         {paymentMethod ===
                         "cash_at_store"
@@ -1830,16 +2275,21 @@ export default function ShopPage() {
                               deliveryFee
                             )}
                       </span>
+
                     </div>
 
                     <div className="flex justify-between pt-2 text-sm font-extrabold text-[#55704d]">
+
                       <span>
                         Total
                       </span>
 
                       <span>
-                        {formatPrice(total)}
+                        {formatPrice(
+                          total
+                        )}
                       </span>
+
                     </div>
 
                   </div>
@@ -1850,9 +2300,11 @@ export default function ShopPage() {
 
                 {error && (
                   <div className="rounded-[18px] border border-[#ecd0d5] bg-[#fdf0f2] px-4 py-3">
+
                     <p className="text-xs font-extrabold text-[#9d4f60]">
                       {error}
                     </p>
+
                   </div>
                 )}
 
@@ -1860,22 +2312,30 @@ export default function ShopPage() {
 
                 <button
                   type="submit"
-                  disabled={placingOrder}
+                  disabled={
+                    placingOrder
+                  }
                   className="w-full rounded-[19px] bg-[#b96070] px-4 py-4 text-sm font-extrabold text-white shadow-[0_10px_25px_rgba(185,96,112,0.20)] transition hover:-translate-y-0.5 hover:bg-[#a95263] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {placingOrder ? (
                     <span className="flex items-center justify-center gap-2">
+
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+
                       Placing order...
+
                     </span>
                   ) : (
-                    `Place order • ${formatPrice(total)}`
+                    `Place order • ${formatPrice(
+                      total
+                    )}`
                   )}
                 </button>
 
                 <p className="text-center text-[10px] leading-4 text-[#9b8e91]">
-                  By placing your order, you confirm that
-                  the information provided is correct.
+                  By placing your order, you confirm
+                  that the information provided is
+                  correct.
                 </p>
 
               </form>
@@ -1904,12 +2364,15 @@ function CheckoutInput({
 }: {
   label: string;
   value: string;
-  onChange: (value: string) => void;
+  onChange: (
+    value: string
+  ) => void;
   placeholder: string;
   type?: string;
 }) {
   return (
     <div>
+
       <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
         {label}
       </label>
@@ -1918,11 +2381,14 @@ function CheckoutInput({
         type={type}
         value={value}
         onChange={(event) =>
-          onChange(event.target.value)
+          onChange(
+            event.target.value
+          )
         }
         placeholder={placeholder}
         className="w-full rounded-[17px] border border-[#e7dddd] bg-white px-4 py-3.5 text-sm font-medium text-[#3b3335] outline-none placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
       />
+
     </div>
   );
 }
@@ -1954,6 +2420,7 @@ function PaymentOption({
           : "border-[#e7dddd] bg-white hover:border-[#d9c6c9]"
       }`}
     >
+
       <div
         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg ${
           selected
