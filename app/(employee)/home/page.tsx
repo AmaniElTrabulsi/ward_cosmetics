@@ -54,16 +54,22 @@ export default function HomePage() {
   async function enableNotifications() {
     try {
       setNotificationStatus("loading");
-      setNotificationMessage("");
+      setNotificationMessage("Checking notification support...");
+
+      // ---------------------------------------------------------
+      // 1. Browser support
+      // ---------------------------------------------------------
 
       if (typeof window === "undefined") {
+        setNotificationStatus("error");
+        setNotificationMessage("Window is not available.");
         return;
       }
 
       if (!("serviceWorker" in navigator)) {
         setNotificationStatus("unsupported");
         setNotificationMessage(
-          "Your browser does not support notifications."
+          "Service workers are not supported in this browser."
         );
         return;
       }
@@ -71,7 +77,7 @@ export default function HomePage() {
       if (!("PushManager" in window)) {
         setNotificationStatus("unsupported");
         setNotificationMessage(
-          "Push notifications are not supported on this device."
+          "Push notifications are not supported in this browser."
         );
         return;
       }
@@ -79,10 +85,14 @@ export default function HomePage() {
       if (!("Notification" in window)) {
         setNotificationStatus("unsupported");
         setNotificationMessage(
-          "Notifications are not supported on this device."
+          "Notifications are not supported in this browser."
         );
         return;
       }
+
+      // ---------------------------------------------------------
+      // 2. VAPID public key
+      // ---------------------------------------------------------
 
       const vapidPublicKey =
         process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -99,54 +109,159 @@ export default function HomePage() {
         return;
       }
 
+      console.log("VAPID public key found.");
+
+      // ---------------------------------------------------------
+      // 3. Register service worker
+      // ---------------------------------------------------------
+
+      setNotificationMessage(
+        "Registering notification service..."
+      );
+
       const registration =
-        await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.register("/sw.js", {
+          scope: "/",
+        });
+
+      console.log(
+        "Service worker registered:",
+        registration
+      );
+
+      // ---------------------------------------------------------
+      // 4. Wait for service worker
+      // ---------------------------------------------------------
+
+      setNotificationMessage(
+        "Waiting for notification service..."
+      );
 
       await navigator.serviceWorker.ready;
 
+      console.log("Service worker is ready.");
+
+      // ---------------------------------------------------------
+      // 5. Check permission
+      // ---------------------------------------------------------
+
       let permission = Notification.permission;
 
+      console.log(
+        "Current notification permission:",
+        permission
+      );
+
+      // ---------------------------------------------------------
+      // 6. Request permission
+      // ---------------------------------------------------------
+
       if (permission === "default") {
-        permission = await Notification.requestPermission();
+        setNotificationMessage(
+          "Please allow notifications when your browser asks."
+        );
+
+        permission =
+          await Notification.requestPermission();
+
+        console.log(
+          "Notification permission result:",
+          permission
+        );
       }
 
       if (permission !== "granted") {
         setNotificationStatus("denied");
+
         setNotificationMessage(
-          "Notifications are blocked. Please allow notifications for Ward Cosmetics in your iPhone settings."
+          "Notifications were not allowed. Please allow notifications for Ward Cosmetics in your browser settings."
         );
+
         return;
       }
+
+      // ---------------------------------------------------------
+      // 7. Get existing subscription
+      // ---------------------------------------------------------
+
+      setNotificationMessage(
+        "Creating notification subscription..."
+      );
 
       let subscription =
         await registration.pushManager.getSubscription();
 
+      console.log(
+        "Existing push subscription:",
+        subscription
+      );
+
+      // ---------------------------------------------------------
+      // 8. Create subscription
+      // ---------------------------------------------------------
+
       if (!subscription) {
+        console.log(
+          "Creating new push subscription..."
+        );
+
         subscription =
           await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey:
               urlBase64ToArrayBuffer(vapidPublicKey),
           });
+
+        console.log(
+          "New push subscription created:",
+          subscription
+        );
       }
 
-      const subscriptionJson = subscription.toJSON();
+      // ---------------------------------------------------------
+      // 9. Extract subscription data
+      // ---------------------------------------------------------
 
-      const endpoint = subscriptionJson.endpoint;
-      const p256dh = subscriptionJson.keys?.p256dh;
-      const auth = subscriptionJson.keys?.auth;
+      setNotificationMessage(
+        "Saving notification settings..."
+      );
+
+      const subscriptionJson =
+        subscription.toJSON();
+
+      const endpoint =
+        subscriptionJson.endpoint;
+
+      const p256dh =
+        subscriptionJson.keys?.p256dh;
+
+      const auth =
+        subscriptionJson.keys?.auth;
+
+      console.log("Push subscription data:", {
+        endpoint,
+        hasP256dh: Boolean(p256dh),
+        hasAuth: Boolean(auth),
+      });
 
       if (!endpoint || !p256dh || !auth) {
         console.error(
-          "Push subscription is missing required information."
+          "Push subscription is missing required information.",
+          subscriptionJson
         );
 
         setNotificationStatus("error");
+
         setNotificationMessage(
-          "Could not create the notification subscription."
+          "The push subscription was created, but its required data is missing."
         );
+
         return;
       }
+
+      // ---------------------------------------------------------
+      // 10. Save to Supabase
+      // ---------------------------------------------------------
 
       const { error } = await supabase
         .from("push_subscriptions")
@@ -161,37 +276,70 @@ export default function HomePage() {
           }
         );
 
+      // ---------------------------------------------------------
+      // 11. Show REAL Supabase error
+      // ---------------------------------------------------------
+
       if (error) {
         console.error(
-          "Could not save push subscription:",
+          "SUPABASE PUSH SUBSCRIPTION ERROR:",
           error
         );
 
         setNotificationStatus("error");
+
+        const message =
+          error.message ||
+          "Unknown database error.";
+
+        const details =
+          error.details ||
+          "";
+
+        const hint =
+          error.hint ||
+          "";
+
         setNotificationMessage(
-          "Could not save notification settings."
+          `Database error: ${message}${
+            details ? ` Details: ${details}` : ""
+          }${hint ? ` Hint: ${hint}` : ""}`
         );
+
         return;
       }
 
+      // ---------------------------------------------------------
+      // 12. Success
+      // ---------------------------------------------------------
+
       console.log(
-        "Ward Cosmetics push notifications enabled."
+        "Ward Cosmetics push notifications enabled successfully."
       );
 
       setNotificationStatus("enabled");
+
       setNotificationMessage(
         "You will now receive notifications when a new order is placed."
       );
+
     } catch (error) {
       console.error(
-        "Failed to enable notifications:",
+        "FAILED TO ENABLE NOTIFICATIONS:",
         error
       );
 
       setNotificationStatus("error");
-      setNotificationMessage(
-        "Could not enable notifications. Please try again."
-      );
+
+      if (error instanceof Error) {
+        setNotificationMessage(
+          `Notification error: ${error.message}`
+        );
+      } else {
+        setNotificationMessage(
+          "Could not enable notifications. Please try again."
+        );
+      }
     }
   }
 
