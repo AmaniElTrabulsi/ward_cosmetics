@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 
 type Employee = {
   id?: string;
@@ -142,7 +141,7 @@ export default function HomePage() {
       console.log("Service worker is ready.");
 
       // ---------------------------------------------------------
-      // 5. Check permission
+      // 5. Check notification permission
       // ---------------------------------------------------------
 
       let permission = Notification.permission;
@@ -197,7 +196,7 @@ export default function HomePage() {
       );
 
       // ---------------------------------------------------------
-      // 8. Create subscription
+      // 8. Create subscription if necessary
       // ---------------------------------------------------------
 
       if (!subscription) {
@@ -260,50 +259,47 @@ export default function HomePage() {
       }
 
       // ---------------------------------------------------------
-      // 10. Save to Supabase
+      // 10. Save through our secure server API
       // ---------------------------------------------------------
 
-      const { error } = await supabase
-        .from("push_subscriptions")
-        .upsert(
-          {
+      setNotificationMessage(
+        "Saving notification settings..."
+      );
+
+      const response = await fetch(
+        "/api/push/subscribe",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             endpoint,
             p256dh,
             auth,
-          },
-          {
-            onConflict: "endpoint",
-          }
-        );
+          }),
+        }
+      );
+
+      const result = await response.json();
 
       // ---------------------------------------------------------
-      // 11. Show REAL Supabase error
+      // 11. Handle server error
       // ---------------------------------------------------------
 
-      if (error) {
+      if (!response.ok) {
         console.error(
-          "SUPABASE PUSH SUBSCRIPTION ERROR:",
-          error
+          "PUSH SUBSCRIPTION API ERROR:",
+          result
         );
 
         setNotificationStatus("error");
 
-        const message =
-          error.message ||
-          "Unknown database error.";
-
-        const details =
-          error.details ||
-          "";
-
-        const hint =
-          error.hint ||
-          "";
-
         setNotificationMessage(
-          `Database error: ${message}${
-            details ? ` Details: ${details}` : ""
-          }${hint ? ` Hint: ${hint}` : ""}`
+          `Could not save notification settings: ${
+            result.error ||
+            "Unknown server error."
+          }`
         );
 
         return;
@@ -314,7 +310,7 @@ export default function HomePage() {
       // ---------------------------------------------------------
 
       console.log(
-        "Ward Cosmetics push notifications enabled successfully."
+        "Push subscription saved successfully."
       );
 
       setNotificationStatus("enabled");
@@ -322,7 +318,6 @@ export default function HomePage() {
       setNotificationMessage(
         "You will now receive notifications when a new order is placed."
       );
-
     } catch (error) {
       console.error(
         "FAILED TO ENABLE NOTIFICATIONS:",
@@ -366,7 +361,9 @@ export default function HomePage() {
 
           <h1 className="app-title">
             Hello
-            {employee?.name ? `, ${employee.name}` : ""}
+            {employee?.name
+              ? `, ${employee.name}`
+              : ""}
           </h1>
 
           <p className="app-subtitle">
@@ -586,7 +583,9 @@ export default function HomePage() {
               <div className="flex items-center gap-4 p-5 sm:p-6">
 
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--green)] text-lg font-extrabold text-[var(--green-dark)]">
-                  {employee.name.charAt(0).toUpperCase()}
+                  {employee.name
+                    .charAt(0)
+                    .toUpperCase()}
                 </div>
 
                 <div className="min-w-0 flex-1">
@@ -652,7 +651,6 @@ function HomeAction({
   primary?: boolean;
   variant?: "green" | "rose";
 }) {
-
   if (primary) {
     return (
       <button
