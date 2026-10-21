@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -248,6 +249,13 @@ export default function OwnerDashboard() {
                 Keep an eye on your store performance, sales and
                 inventory in one place.
               </p>
+
+              <Link
+                href="/owner-dashboard/employees"
+                className="app-button app-button-green mt-4 w-fit"
+              >
+                Manage employees →
+              </Link>
             </div>
 
             {/* FILTER */}

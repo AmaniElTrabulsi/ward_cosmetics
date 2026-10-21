@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 // ============================================================
@@ -11,6 +11,29 @@ const WHISH_NAME = "Hadi Dabbous";
 const WHISH_PHONE = "76 180 300";
 
 const DELIVERY_FEE = 2;
+
+const CART_STORAGE_KEY = "ward_cosmetics_cart";
+
+// Reads the cart saved in this browser (ids + quantities only).
+function readSavedCart(): { id: string; quantity: number }[] {
+  try {
+    const raw = localStorage.getItem(CART_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.flatMap((entry: unknown) => {
+      if (!entry || typeof entry !== "object") return [];
+      const { id, quantity } = entry as { id?: unknown; quantity?: unknown };
+      if (typeof id !== "string") return [];
+      const qty = Number(quantity);
+      if (!Number.isFinite(qty) || qty < 1) return [];
+      return [{ id, quantity: Math.floor(qty) }];
+    });
+  } catch {
+    return [];
+  }
+}
 
 // ============================================================
 // TYPES
@@ -78,6 +101,10 @@ export default function ShopPage() {
 
   const [whishReference, setWhishReference] = useState("");
 
+  const [copied, setCopied] = useState(false);
+  const [cartLoaded, setCartLoaded] = useState(false);
+  const cartHydrated = useRef(false);
+
   // ============================================================
   // LOAD PRODUCTS
   // ============================================================
@@ -85,6 +112,55 @@ export default function ShopPage() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Keep the cart between visits (and when the PWA is reopened).
+  useEffect(() => {
+    if (!cartLoaded) return;
+
+    try {
+      localStorage.setItem(
+        CART_STORAGE_KEY,
+        JSON.stringify(
+          cart.map((item) => ({
+            id: item.product.id,
+            quantity: item.quantity,
+          }))
+        )
+      );
+    } catch {
+      // Storage unavailable (private mode): the cart still works in memory.
+    }
+  }, [cart, cartLoaded]);
+
+  // Escape closes the top-most panel; the page behind doesn't scroll.
+  const anyPanelOpen =
+    Boolean(selectedProduct) || cartOpen || checkoutOpen;
+
+  useEffect(() => {
+    if (!anyPanelOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape" || placingOrder) return;
+
+      if (selectedProduct) {
+        setSelectedProduct(null);
+      } else if (checkoutOpen) {
+        setCheckoutOpen(false);
+      } else if (cartOpen) {
+        setCartOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [anyPanelOpen, selectedProduct, checkoutOpen, cartOpen, placingOrder]);
 
   async function loadProducts() {
     setLoading(true);
@@ -110,7 +186,42 @@ export default function ShopPage() {
         return;
       }
 
-      setProducts((data || []) as Product[]);
+      const loaded = (data || []) as Product[];
+
+      setProducts(loaded);
+
+      // First load: restore the saved cart. Later loads: re-check stock.
+      const saved = cartHydrated.current ? null : readSavedCart();
+      cartHydrated.current = true;
+
+      setCart((current) => {
+        const source =
+          saved ??
+          current.map((item) => ({
+            id: item.product.id,
+            quantity: item.quantity,
+          }));
+
+        return source.flatMap((entry) => {
+          const fresh = loaded.find(
+            (product) => product.id === entry.id
+          );
+
+          if (!fresh || fresh.stock_quantity <= 0) return [];
+
+          return [
+            {
+              product: fresh,
+              quantity: Math.min(
+                entry.quantity,
+                fresh.stock_quantity
+              ),
+            },
+          ];
+        });
+      });
+
+      setCartLoaded(true);
     } catch (err) {
       console.error(
         "Error loading products:",
@@ -469,6 +580,13 @@ export default function ShopPage() {
       setError(
         "Please enter your phone number."
       );
+      return;
+    }
+
+    const phoneDigits = customerPhone.replace(/\D/g, "");
+
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+      setError("Please enter a valid phone number.");
       return;
     }
 
@@ -832,7 +950,11 @@ export default function ShopPage() {
       // ========================================================
 
       setSuccess(
-        "Your order has been placed successfully!"
+        createdOrderId
+          ? `Your order has been placed successfully! Order reference: ${createdOrderId
+              .slice(0, 8)
+              .toUpperCase()}.`
+          : "Your order has been placed successfully!"
       );
 
       // ========================================================
@@ -864,6 +986,18 @@ export default function ShopPage() {
   // ============================================================
   // FORMAT PRICE
   // ============================================================
+
+  async function copyWhishNumber() {
+    try {
+      await navigator.clipboard.writeText(
+        WHISH_PHONE.replace(/\s/g, "")
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard not available: the number is still shown on screen.
+    }
+  }
 
   function formatPrice(
     value: number
@@ -1027,7 +1161,7 @@ export default function ShopPage() {
 
         {/* HERO */}
 
-        <section className="relative overflow-hidden rounded-[32px] border border-[#eadfe0] bg-white p-6 shadow-[0_15px_50px_rgba(82,57,61,0.06)] sm:p-8">
+        <section className="relative overflow-hidden rounded-[32px] border border-[#eadfe0] bg-white p-5 shadow-[0_15px_50px_rgba(82,57,61,0.06)] sm:p-8">
 
           <div className="absolute -right-20 -top-24 h-64 w-64 rounded-full bg-[#f5dfe4]/70 blur-2xl" />
 
@@ -1039,8 +1173,8 @@ export default function ShopPage() {
               Beauty & cosmetics
             </span>
 
-            <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-[#342d2f] sm:text-4xl">
-              Find something you'll love.
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-[#342d2f] sm:mt-3 sm:text-4xl">
+              Find something you&apos;ll love.
             </h2>
 
             <p className="mt-3 max-w-xl text-sm leading-6 text-[#887c80]">
@@ -1057,7 +1191,7 @@ export default function ShopPage() {
 
         <section className="mt-6 rounded-[28px] border border-[#eadfe0] bg-white p-4 shadow-[0_10px_35px_rgba(82,57,61,0.05)] sm:p-5">
 
-          <div className="grid gap-3 lg:grid-cols-[1fr_220px_220px]">
+          <div className="grid gap-3 lg:grid-cols-[1fr_240px]">
 
             {/* SEARCH */}
 
@@ -1076,44 +1210,17 @@ export default function ShopPage() {
                   )
                 }
                 placeholder="Search products, brands or barcode..."
+                aria-label="Search products"
                 className="w-full rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] py-3.5 pl-11 pr-4 text-sm font-medium outline-none transition placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:bg-white focus:ring-4 focus:ring-[#f5dfe4]"
               />
 
             </div>
 
-            {/* CATEGORY */}
-
-            <select
-              value={category}
-              onChange={(event) =>
-                setCategory(
-                  event.target.value
-                )
-              }
-              className="rounded-[18px] border border-[#e7dddd] bg-[#fdfafa] px-4 py-3.5 text-sm font-semibold text-[#4d4245] outline-none focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
-            >
-
-              <option value="all">
-                All brands
-              </option>
-
-              {categories.map(
-                (brand) => (
-                  <option
-                    key={brand}
-                    value={brand}
-                  >
-                    {brand}
-                  </option>
-                )
-              )}
-
-            </select>
-
             {/* SORT */}
 
             <select
               value={sort}
+              aria-label="Sort products"
               onChange={(event) =>
                 setSort(
                   event.target.value
@@ -1157,6 +1264,30 @@ export default function ShopPage() {
             </select>
 
           </div>
+
+          {categories.length > 0 && (
+            <div
+              className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1"
+              role="group"
+              aria-label="Filter by brand"
+            >
+              {["all", ...categories].map((brand) => (
+                <button
+                  key={brand}
+                  type="button"
+                  onClick={() => setCategory(brand)}
+                  aria-pressed={category === brand}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-xs font-extrabold transition ${
+                    category === brand
+                      ? "border-[#b96070] bg-[#b96070] text-white"
+                      : "border-[#e7dddd] bg-white text-[#665b5e] hover:border-[#d49aa5]"
+                  }`}
+                >
+                  {brand === "all" ? "All brands" : brand}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
 
@@ -1278,16 +1409,16 @@ export default function ShopPage() {
                       <div className="absolute left-2 top-2 sm:left-3 sm:top-3">
 
                         {outOfStock ? (
-                          <span className="rounded-full bg-[#342d2f]/90 px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[9px]">
+                          <span className="rounded-full bg-[#342d2f]/90 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white sm:px-3 sm:py-1.5 sm:text-[11px]">
                             Out of stock
                           </span>
                         ) : product.stock_quantity <=
                           5 ? (
-                          <span className="rounded-full bg-[#fff1d9] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#9a6a27] sm:px-3 sm:py-1.5 sm:text-[9px]">
+                          <span className="rounded-full bg-[#fff1d9] px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#9a6a27] sm:px-3 sm:py-1.5 sm:text-[11px]">
                             Limited stock
                           </span>
                         ) : (
-                          <span className="rounded-full bg-[#e9f4e6] px-2 py-1 text-[7px] font-extrabold uppercase tracking-wide text-[#55704d] sm:px-3 sm:py-1.5 sm:text-[9px]">
+                          <span className="rounded-full bg-[#e9f4e6] px-2 py-1 text-[10px] font-extrabold uppercase tracking-wide text-[#55704d] sm:px-3 sm:py-1.5 sm:text-[11px]">
                             In stock
                           </span>
                         )}
@@ -1309,7 +1440,7 @@ export default function ShopPage() {
                     <div className="p-3 sm:p-5">
 
                       {product.brand && (
-                        <p className="truncate text-[8px] font-extrabold uppercase tracking-[0.14em] text-[#a85566] sm:text-[9px]">
+                        <p className="truncate text-[10px] font-extrabold uppercase tracking-[0.14em] text-[#a85566] sm:text-[11px]">
                           {product.brand}
                         </p>
                       )}
@@ -1376,7 +1507,7 @@ export default function ShopPage() {
 
         {/* FOOTER */}
 
-        <footer className="py-12 text-center">
+        <footer className="pb-28 pt-12 text-center sm:py-12">
 
           <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#9b8e91]">
             Ward Cosmetics
@@ -1390,7 +1521,31 @@ export default function ShopPage() {
 
       </div>
 
-      {/* ======================================================
+      {/* MOBILE CART BAR */}
+
+      {cartCount > 0 &&
+        !cartOpen &&
+        !checkoutOpen &&
+        !selectedProduct && (
+          <div className="fixed inset-x-0 bottom-0 z-30 p-3 sm:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setCartOpen(true);
+              }}
+              className="flex w-full items-center justify-between rounded-2xl bg-[#b96070] px-5 py-4 text-sm font-extrabold text-white shadow-[0_12px_30px_rgba(185,96,112,0.35)]"
+            >
+              <span>
+                View cart · {cartCount}{" "}
+                {cartCount === 1 ? "item" : "items"}
+              </span>
+              <span>{formatPrice(subtotal)}</span>
+            </button>
+          </div>
+        )}
+
+      {/* ====================================================== 
           PRODUCT DETAILS MODAL
       ====================================================== */}
 
@@ -1636,6 +1791,9 @@ export default function ShopPage() {
         >
 
           <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Shopping cart"
             className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-[#fbf8f7] shadow-[-15px_0_50px_rgba(60,70,62,0.14)]"
             onClick={(event) =>
               event.stopPropagation()
@@ -1663,6 +1821,7 @@ export default function ShopPage() {
                 onClick={() =>
                   setCartOpen(false)
                 }
+                aria-label="Close cart"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-xl text-[#705f63] shadow-sm"
               >
                 ×
@@ -1948,6 +2107,7 @@ export default function ShopPage() {
                         false
                       )
                     }
+                    aria-label="Close checkout"
                     className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f3f2] text-xl text-[#705f63]"
                   >
                     ×
@@ -2064,8 +2224,7 @@ export default function ShopPage() {
                     </p>
 
                     <h3 className="mt-1 text-base font-extrabold">
-                      Choose how you'd like to
-                      pay
+                      Choose how you&apos;d like to pay
                     </h3>
 
                   </div>
@@ -2139,9 +2298,19 @@ export default function ShopPage() {
                           {WHISH_NAME}
                         </p>
 
-                        <p className="mt-0.5 text-base font-extrabold text-[#a85566]">
-                          {WHISH_PHONE}
-                        </p>
+                        <div className="mt-0.5 flex items-center gap-3">
+                          <p className="text-base font-extrabold text-[#a85566]">
+                            {WHISH_PHONE}
+                          </p>
+
+                          <button
+                            type="button"
+                            onClick={copyWhishNumber}
+                            className="rounded-full border border-[#e8d2d7] px-3 py-1 text-[10px] font-extrabold text-[#9d4f60] transition hover:bg-[#fff5f6]"
+                          >
+                            {copied ? "Copied ✓" : "Copy number"}
+                          </button>
+                        </div>
 
                         <p className="mt-3 text-xs leading-5 text-[#806d70]">
                           Send{" "}
@@ -2178,6 +2347,7 @@ export default function ShopPage() {
                             )
                           }
                           placeholder="Enter transaction number"
+                          aria-label="Whish transaction or reference number"
                           className="w-full rounded-[17px] border border-[#e7dddd] bg-white px-4 py-3.5 text-sm font-medium outline-none placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
                         />
 
@@ -2208,6 +2378,7 @@ export default function ShopPage() {
                     }
                     rows={3}
                     placeholder="Anything we should know about your order?"
+                    aria-label="Order notes"
                     className="w-full resize-none rounded-[18px] border border-[#e7dddd] bg-white px-4 py-3.5 text-sm font-medium outline-none placeholder:text-[#aaa0a2] focus:border-[#d49aa5] focus:ring-4 focus:ring-[#f5dfe4]"
                   />
 
@@ -2370,14 +2541,20 @@ function CheckoutInput({
   placeholder: string;
   type?: string;
 }) {
+  const inputId = useId();
+
   return (
     <div>
 
-      <label className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]">
+      <label
+        htmlFor={inputId}
+        className="mb-2 block text-[10px] font-extrabold uppercase tracking-[0.08em] text-[#665b5e]"
+      >
         {label}
       </label>
 
       <input
+        id={inputId}
         type={type}
         value={value}
         onChange={(event) =>

@@ -317,6 +317,20 @@ export default function EmployeeLoginPage() {
           </div>
 
           {/* ================================================= */}
+          {/* CREATE EMPLOYEE ACCOUNT (OWNER ONLY) */}
+          {/* ================================================= */}
+
+          <a
+            href="/admin-login?next=/owner-dashboard/employees"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-[18px] border border-[#d9c3c8] bg-white px-4 py-3.5 text-sm font-extrabold text-[#9d4f60] shadow-sm transition hover:-translate-y-0.5 hover:bg-[#fdf0f2]"
+          >
+            + Create employee account
+            <span className="text-[10px] font-bold uppercase tracking-wide text-[#b0a5a7]">
+              owner
+            </span>
+          </a>
+
+          {/* ================================================= */}
           {/* FOOTER */}
           {/* ================================================= */}
 

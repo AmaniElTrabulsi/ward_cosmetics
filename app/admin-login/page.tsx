@@ -120,7 +120,18 @@ export default function AdminLogin() {
          GO TO OWNER DASHBOARD
       ===================================================== */
 
-      router.replace("/owner-dashboard");
+      const requested = new URLSearchParams(
+        window.location.search
+      ).get("next");
+
+      const destination =
+        requested &&
+        requested.startsWith("/owner-dashboard") &&
+        !requested.startsWith("//")
+          ? requested
+          : "/owner-dashboard";
+
+      router.replace(destination);
     } catch (err) {
       console.error("OWNER LOGIN ERROR:", err);
 
