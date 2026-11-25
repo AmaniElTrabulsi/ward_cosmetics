@@ -913,10 +913,9 @@ export default function ShopClient({
             onClick={() => {
               setQ("");
               setBrand("all");
-              setSort("newest");
-              setMinPrice("");
-              setMaxPrice("");
-              setInStockOnly(false);
+setSort("newest");
+setMaxPrice("");
+setInStockOnly(false);
             }}
           >
             Clear filters
