@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {cookies} from "next/headers";import {createHash} from "crypto";import {supabase} from "@/lib/supabase";
+export async function POST(){const jar=await cookies();const token=jar.get("ward_session")?.value;if(token){const hash=createHash("sha256").update(token).digest("hex");await supabase.rpc("ward_logout",{p_token_hash:hash})}const r=NextResponse.json({ok:true});r.cookies.set("ward_session","",{path:"/",maxAge:0});return r}

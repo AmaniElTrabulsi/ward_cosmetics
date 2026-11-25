@@ -1,0 +1,2 @@
+import {NextResponse} from "next/server";import {supabase} from "@/lib/supabase";import {getSession} from "@/lib/session";
+export async function GET(){const u=await getSession();if(!u)return NextResponse.json({error:"Sign in required."},{status:401});const {data,error}=await supabase.from("orders").select("*,order_items(*)").order("created_at",{ascending:false});if(error)return NextResponse.json({error:error.message},{status:400});return NextResponse.json({orders:data||[]})}
