@@ -1,10 +1,3 @@
 import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  allowedDevOrigins: [
-    "192.168.10.122",
-    "localhost",
-  ],
-};
-
+const nextConfig: NextConfig = { images: { unoptimized: true } };
 export default nextConfig;

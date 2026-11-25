@@ -259,7 +259,6 @@ export default function ShopClient({
   const [q, setQ] = useState("");
   const [brand, setBrand] = useState("all");
   const [sort, setSort] = useState("newest");
-  const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [inStockOnly, setInStockOnly] = useState(false);
 
@@ -294,7 +293,6 @@ export default function ShopClient({
 
       if (!search.includes(q.toLowerCase())) return false;
       if (brand !== "all" && p.brand !== brand) return false;
-      if (minPrice !== "" && Number(p.price) < Number(minPrice)) return false;
       if (maxPrice !== "" && Number(p.price) > Number(maxPrice)) return false;
       if (inStockOnly && p.stock_quantity !== null && p.stock_quantity <= 0)
         return false;
@@ -319,7 +317,7 @@ export default function ShopClient({
     }
 
     return result;
-  }, [products, q, brand, minPrice, maxPrice, inStockOnly, sort]);
+  }, [products, q, brand, maxPrice, inStockOnly, sort]);
 
   const count = Object.values(cart).reduce((a, b) => a + b, 0);
   const cartProducts = products.filter((p) => cart[p.id] > 0);
@@ -525,6 +523,83 @@ export default function ShopClient({
 
   return (
     <>
+      <style jsx>{`
+        .shop-products-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+          align-items: stretch;
+        }
+        .shop-products-grid .product {
+          min-width: 0;
+          overflow: hidden;
+        }
+        .shop-products-grid .product img {
+          display: block;
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          object-fit: cover;
+        }
+        .shop-products-grid .product-body {
+          min-width: 0;
+          padding: 12px;
+        }
+        .shop-products-grid .product-body strong {
+          overflow-wrap: anywhere;
+        }
+        .shop-products-grid .product-body .row {
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .shop-products-grid .product-body .btn {
+          min-height: 40px;
+          padding: 9px 11px;
+        }
+        .shop-controls {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          padding: 14px !important;
+        }
+        .shop-controls label {
+          min-width: 0;
+        }
+        .shop-controls .field {
+          width: 100%;
+          min-width: 0;
+        }
+        .shop-search {
+          width: min(100%, 360px);
+        }
+        @media (min-width: 700px) {
+          .shop-products-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+          }
+          .shop-controls {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+            padding: 20px !important;
+          }
+        }
+        @media (min-width: 1100px) {
+          .shop-products-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 420px) {
+          .shop-products-grid {
+            gap: 9px;
+          }
+          .shop-products-grid .product-body {
+            padding: 9px;
+          }
+          .shop-products-grid .product-body .price {
+            font-size: 15px;
+          }
+          .shop-products-grid .product-body .btn {
+            width: 100%;
+          }
+        }
+      `}</style>
       <header className="topbar">
         <Link href="/" className="brand" style={{ textDecoration: "none" }}>
           WARD COSMETICS
@@ -539,7 +614,7 @@ export default function ShopClient({
         </nav>
       </header>
 
-      <main className="shell">
+      <main className="shell" style={{ paddingBottom: 36, overflowX: "hidden" }}>
         {confirmation && (
           <section
             className="panel"
@@ -765,8 +840,8 @@ export default function ShopClient({
           </div>
 
           <input
-            className="field"
-            style={{ maxWidth: 320 }}
+            className="field shop-search"
+            style={{ maxWidth: 360 }}
             placeholder="Search products or brands..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -774,7 +849,7 @@ export default function ShopClient({
         </div>
 
         <section
-          className="panel"
+          className="panel shop-controls"
           style={{
             marginTop: 22,
             marginBottom: 24,
@@ -795,18 +870,6 @@ export default function ShopClient({
                 <option key={b} value={b}>{b}</option>
               ))}
             </select>
-          </label>
-
-          <label>
-            <span className="eyebrow">Minimum price ($)</span>
-            <input
-              className="field"
-              type="number"
-              min="0"
-              placeholder="Min"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-            />
           </label>
 
           <label>
@@ -869,7 +932,7 @@ export default function ShopClient({
             <p className="muted">No products match your filters.</p>
           </div>
         ) : (
-          <div className="grid grid-4">
+          <div className="shop-products-grid">
             {filtered.map((p) => {
               const unavailable =
                 p.stock_quantity !== null && p.stock_quantity <= 0;

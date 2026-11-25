@@ -448,6 +448,26 @@ export default function ProductManager() {
 
   return (
     <>
+      <style jsx>{`
+        .product-page { min-width: 0; }
+        .product-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+        .product-actions { display:flex; flex-wrap:wrap; gap:10px; }
+        .product-table-actions { display:flex; flex-wrap:wrap; gap:7px; }
+        @media(max-width:650px) {
+          .product-form-grid { grid-template-columns:1fr; }
+          .product-page .topbar { align-items:flex-start; flex-direction:column; }
+          .product-page .navlinks { width:100%; overflow-x:auto; flex-wrap:nowrap; }
+          .product-page .navlinks a { white-space:nowrap; }
+          .product-page .shell { padding:16px 12px 36px; }
+          .product-page .panel { padding:15px; }
+          .product-page .row { align-items:flex-start; flex-wrap:wrap; }
+          .product-page .row > .field { width:100%; max-width:none !important; }
+          .product-page .btn { min-height:43px; }
+          .product-page video { min-height:190px !important; }
+          .product-page .tablewrap { margin-inline:-2px; }
+        }
+      `}</style>
+      <div className="product-page">
       <header className="topbar">
         <Link
           href="/app"
@@ -489,7 +509,7 @@ export default function ProductManager() {
             )}
           </div>
 
-          <div className="formrow">
+          <div className="product-form-grid">
             <label className="label">
               Brand
               <input
@@ -846,6 +866,7 @@ export default function ProductManager() {
           )}
         </section>
       </main>
+      </div>
     </>
   );
 }
