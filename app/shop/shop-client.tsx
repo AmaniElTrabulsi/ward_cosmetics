@@ -610,7 +610,6 @@ export default function ShopClient({
           <a href="#cart">
             Bag <span className="badge-count">{count}</span>
           </a>
-          <Link href="/login">Staff</Link>
         </nav>
       </header>
 

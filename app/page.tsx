@@ -1,7 +1,47 @@
+
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
-export const dynamic = "force-dynamic";
-export default async function Home() {
-  const { data: products } = await supabase.from("products").select("*").order("created_at",{ascending:false}).limit(8);
-  return <><header className="topbar"><div><div className="brand">WARD <span style={{color:"var(--gold)"}}>COSMETICS</span></div><div className="eyebrow">The art of everyday beauty</div></div><nav className="navlinks"><Link href="/shop">Shop</Link><Link href="/login">Staff login</Link><Link href="/app">Workspace</Link></nav></header><main className="shell"><section className="hero"><div className="eyebrow" style={{color:"#e7c89f"}}>A little luxury, every day</div><h1>Beauty, thoughtfully chosen.</h1><p>Discover your next favourite in a curated world of skincare, fragrance and beauty essentials.</p><Link className="btn" href="/shop" style={{display:"inline-block",textDecoration:"none",background:"#d0ad7b",color:"#351b28"}}>Explore the collection</Link></section><section style={{marginTop:42}}><div className="row"><h2 className="section-title">Featured collection</h2><Link href="/shop" style={{color:"var(--wine)"}}>View all →</Link></div><div className="grid grid-4">{(products||[]).map(p=><Link href="/shop" key={p.id} className="product" style={{textDecoration:"none",color:"inherit"}}><img src={p.image_url||"https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=600"} alt={p.name}/><div className="product-body"><div className="eyebrow">{p.brand}</div><strong>{p.name}</strong><div className="price">${Number(p.price).toFixed(2)}</div></div></Link>)}</div></section></main></>;
+
+export default function HomePage() {
+  return (
+    <main className="landing">
+      <header className="landing-header">
+        <Link href="/" className="landing-brand">
+          WARD COSMETICS
+        </Link>
+        <span>BEAUTY · CARE · STYLE</span>
+      </header>
+
+      <section className="landing-hero">
+        <div className="landing-copy">
+          <span className="landing-eyebrow">YOUR BEAUTY DESTINATION</span>
+          <h1>Beauty,<br />thoughtfully<br />selected.</h1>
+          <p>
+            Discover a considered collection of beauty and
+            skincare favourites, selected with care.
+          </p>
+          <div className="landing-actions">
+            <Link href="/shop" className="landing-store">
+              Explore the store <span>↗</span>
+            </Link>
+            <Link href="/login" className="landing-staff">
+              Staff login <span>→</span>
+            </Link>
+          </div>
+        </div>
+
+        <div className="landing-visual">
+          <div className="landing-circle"><span>W</span></div>
+          <div className="landing-visual-caption">
+            <span>WARD COSMETICS</span>
+            <span>THE BEAUTY COLLECTION</span>
+          </div>
+        </div>
+      </section>
+
+      <footer className="landing-footer">
+        <span>WARD COSMETICS</span>
+        <span>Discover something beautiful.</span>
+      </footer>
+    </main>
+  );
 }

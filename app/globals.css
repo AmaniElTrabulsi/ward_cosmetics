@@ -5,3 +5,201 @@
 @media(max-width:800px){.grid-4,.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:42px 22px}.product img{height:180px}}
 @media(max-width:560px){.shell{padding:16px 12px}.grid-2,.formrow{grid-template-columns:1fr}.topbar{padding:12px;gap:10px;flex-wrap:wrap}.brand{font-size:20px}.panel{padding:15px}.navlinks{max-width:100%;overflow-x:auto;flex-wrap:nowrap}.navlinks a{padding:8px 10px;white-space:nowrap}.product img{height:auto;aspect-ratio:1/1;object-fit:cover}.section-title{font-size:26px}.hero{padding:34px 18px}.hero h1{font-size:36px}.row{flex-wrap:wrap;align-items:flex-start}}
 @media(max-width:380px){.grid-3,.grid-4{grid-template-columns:1fr}.brand{font-size:18px}.btn{padding:10px 14px}}
+
+/* WARD COSMETICS PUBLIC HOMEPAGE */
+
+.landing {
+  min-height: 100vh;
+  background: #f3eee5;
+  color: #29251f;
+  padding: 0 7%;
+  display: flex;
+  flex-direction: column;
+}
+
+.landing-header {
+  height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #ded5c8;
+}
+
+.landing-brand {
+  color: #473a32;
+  text-decoration: none;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: .18em;
+}
+
+.landing-header > span {
+  color: #998879;
+  font-size: 10px;
+  letter-spacing: .2em;
+}
+
+.landing-hero {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 50px;
+  max-width: 1250px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 65px 0;
+}
+
+.landing-eyebrow {
+  color: #98776d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .2em;
+}
+
+.landing-copy h1 {
+  font: 500 clamp(54px, 7vw, 94px) Georgia, serif;
+  line-height: .99;
+  letter-spacing: -.055em;
+  color: #493039;
+  margin: 24px 0;
+}
+
+.landing-copy p {
+  color: #81766d;
+  max-width: 410px;
+  line-height: 1.9;
+  font-size: 15px;
+}
+
+.landing-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 26px;
+  margin-top: 34px;
+}
+
+.landing-store {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 35px;
+  padding: 17px 21px;
+  background: #593943;
+  color: white;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.landing-staff {
+  color: #795c58;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.landing-staff span {
+  margin-left: 7px;
+}
+
+.landing-visual {
+  min-height: 490px;
+  background: #e4d8ca;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-circle {
+  width: min(330px, 65%);
+  aspect-ratio: 1;
+  border: 1px solid #a68c79;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.landing-circle::before {
+  content: "";
+  position: absolute;
+  inset: 17px;
+  border: 1px solid #bba695;
+  border-radius: 50%;
+}
+
+.landing-circle span {
+  font: italic 150px Georgia, serif;
+  color: #76565a;
+}
+
+.landing-visual-caption {
+  position: absolute;
+  bottom: 25px;
+  left: 25px;
+  right: 25px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #806d60;
+  font-size: 9px;
+  letter-spacing: .15em;
+}
+
+.landing-footer {
+  min-height: 65px;
+  border-top: 1px solid #ded5c8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #9b8b7e;
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+
+@media (max-width: 750px) {
+  .landing {
+    padding: 0 20px;
+  }
+
+  .landing-header {
+    height: 70px;
+  }
+
+  .landing-header > span {
+    font-size: 8px;
+  }
+
+  .landing-hero {
+    grid-template-columns: 1fr;
+    gap: 35px;
+    padding: 55px 0 35px;
+  }
+
+  .landing-copy h1 {
+    font-size: clamp(54px, 13vw, 76px);
+  }
+
+  .landing-visual {
+    min-height: 310px;
+  }
+
+  .landing-circle {
+    width: 220px;
+  }
+
+  .landing-circle span {
+    font-size: 105px;
+  }
+
+  .landing-footer {
+    font-size: 8px;
+  }
+}
